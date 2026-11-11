@@ -15,7 +15,7 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v7` → `zmb-v8`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v8` → `zmb-v9`).
 
 ## Cuentas y panel de administración
 

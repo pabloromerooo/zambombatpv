@@ -209,7 +209,7 @@ const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch{}};
 const hashRole=location.hash.replace('#','');
 const ROLE=['barra','cocina'].includes(hashRole)?hashRole:(['barra','cocina'].includes(store.get('zmb.role'))?store.get('zmb.role'):'');
 const DEV=store.get('zmb.dev')||(()=>{const d=Math.random().toString(36).slice(2,6);store.set('zmb.dev',d);return d})();
-const ALIVE_MS=9000;
+const ALIVE_MS=25000; // tolerante: un hipo de Wi-Fi o un móvil con la pantalla en segundo plano no debe marcar "desconectado"
 const BRAND='Solera';
 const ic=(d,z=24)=>`<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICON={
@@ -283,7 +283,18 @@ function ringNew(){ // pitido metálico: dos golpes + parcial inarmónico
 function chimeReady(){tone(988,0,.12,'sine',.3);tone(1480,.12,.22,'sine',.3);buzz([90,50,90])}
 
 /* ---------- pantalla encendida ---------- */
-async function keepAwake(){try{await navigator.wakeLock.request('screen')}catch{}}
+let wl=null,nsv=null;
+async function keepAwake(){
+  try{wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;if(document.visibilityState==='visible')setTimeout(keepAwake,300)})}catch{}
+  if(!nsv){ /* reserva tipo NoSleep: un vídeo mudo en bucle evita que la tablet se duerma */
+    nsv=document.createElement('video');nsv.muted=true;nsv.loop=true;nsv.setAttribute('playsinline','');nsv.setAttribute('muted','');
+    nsv.style.cssText='position:fixed;width:1px;height:1px;opacity:.01;pointer-events:none;left:0;top:0';
+    const s=(t,d)=>{const e=document.createElement('source');e.type=t;e.src='data:'+t+';base64,'+d;nsv.appendChild(e)};
+    s('video/mp4','AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAANzbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAp10cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAQAAABAAAAAAIVbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAAAoAAAAKABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABwG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAYBzdGJsAAAAvHN0c2QAAAAAAAAAAQAAAKxhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMmF2Y0MBZAAK/+EAF2dkAAqs2V7ARAAAAwAEAAADACg8SJZYAQAEaO+Py/34+AAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAXoAAAF6AAAAAYc3R0cwAAAAAAAAABAAAABQAACAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAADhjdHRzAAAAAAAAAAUAAAABAAAQAAAAAAEAACgAAAAAAQAAEAAAAAABAAAAAAAAAAEAAAgAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAAFAAAAAQAAAChzdHN6AAAAAAAAAAAAAAAFAAACxAAAAAwAAAAMAAAADAAAAAwAAAAUc3RjbwAAAAAAAAABAAADowAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNjAuMTYuMTAwAAAACGZyZWUAAAL8bWRhdAAAAqoGBf//ptxF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjQgcjMxMDggMzFlMTlmOSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0xIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDM6MHgzIG1lPWhleCBzdWJtZT0yIHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTAgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0wIDh4OGRjdD0xIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PTAgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0xIGtleWludD0yNTAga2V5aW50X21pbj01IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9MTAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAEmWIhAAS/+T/BeD+9Dtfd7P/gQAAAAhBmiQYh//+4AAAAAhBnkJCCH+rgQAAAAgBnmFEP/+zgAAAAAgBnmNEP/+zgQ==');s('video/webm','GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAI/EU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggIp7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECPQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYjzcuSqvJMDVpyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAvrwgDgibCBELqBEJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYjzcuSqvJMDVmfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDEuMDAwMDAwMDAwAB9DtnVAhOeBAKOjgQAAgBACAJ0BKhAAEAAARwiFhYiFhIgCAgAMDWAA/v+rUICjlYEAyACxAQAFEKwAGAAYWC/0AAgAAKOVgQGQALEBAAUQrAAYABhYL/QACAAAo5WBAlgAsQEABRCsABgAGFgv9AAIAACjlYEDIACxAQAFEKwAGAAYWC/0AAgAABxTu2uRu4+zgQC3iveBAfGCAZ/wgQM=');document.body.appendChild(nsv);
+  }
+  if(nsv.paused)nsv.play().catch(()=>{});
+}
+addEventListener('pointerdown',()=>{if(nsv&&nsv.paused)nsv.play().catch(()=>{});if(!wl)keepAwake()},{passive:true});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')keepAwake()});
 
 /* =====================================================================
@@ -439,11 +450,12 @@ const Net={
     dc.onopen=()=>{p.onopen&&p.onopen()};
     dc.onclose=()=>{this.drop(p);p.onfail&&p.onfail()};
     dc.onmessage=e=>{
-      let m;try{m=JSON.parse(e.data)}catch{return}
+      p.last=Date.now();let m;try{m=JSON.parse(e.data)}catch{return}
       this.onMsg(m,r=>{r.src=ROLE;try{dc.send(JSON.stringify(r))}catch{}});
     };
   },
   drop(p){try{p.pc.close()}catch{};this.peers.delete(p.id)},
+  sweep(ms){this.peers.forEach(p=>{if(p.dc&&p.dc.readyState==='open'&&p.last&&Date.now()-p.last>ms){this.drop(p);p.onfail&&p.onfail()}})},
   /* anfitrión (cocina): crea oferta -> código A */
   async hostOffer(){
     const p=this.mkPeer();this.wire(p,p.pc.createDataChannel('zmb'));
@@ -567,8 +579,8 @@ async function verifySession(){
     if(!p||!p.active){doLogout('Tu cuenta ha sido desactivada.');return}
     const changed=p.role!==s.role;
     s.name=p.name;s.role=p.role;s.ver=Date.now();saveSess(s);
-    if(changed)location.reload();
-  }catch(e){if(e.status===400||e.status===401||e.status===403)doLogout('Vuelve a iniciar sesión.')}
+    if(changed&&!orders.some(o=>o.st==='queued'||o.st==='sent'||o.st==='new'))location.reload();
+  }catch(e){/* errores transitorios: se ignoran; nunca recargar en pleno servicio */}
 }
 const canSwitch=()=>(MODES[(getSess()||{}).role]||[]).length>1;
 const whoLine=()=>{const s=getSess();return s?`<p class="who">Sesión: <b>${esc(s.name)}</b> · ${esc(s.role)}</p>`:''};
@@ -867,7 +879,7 @@ async function startKitchen(){
   $('#bSnd').onclick=()=>{soundOn=!soundOn;store.set('zmb.sound',soundOn);snd();if(soundOn)ringNew()};
   Net.init(kHandle);
   renderKitchen();
-  setInterval(()=>{tick();kPill()},1000);kPill();
+  setInterval(()=>{tick();kPill();Net.sweep(45000)},1000);kPill();
   keepAwake();
   toast('Toca cualquier botón una vez para activar el sonido',{kind:'warn',ms:4000});
 }
