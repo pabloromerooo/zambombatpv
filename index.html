@@ -233,6 +233,14 @@ details{margin-top:14px}summary{color:var(--mut);font-size:13px;padding:8px 0;cu
 .li.bevl{font-size:20px;opacity:.55;padding-top:8px}
 .card.rush{border-color:var(--red);box-shadow:0 0 0 2px rgba(255,92,92,.5)}
 body.kitchen #toasts{top:auto;bottom:calc(env(safe-area-inset-bottom) + 14px)}
+#dock{position:fixed;right:12px;bottom:12px;width:min(430px,calc(100% - 24px));z-index:40;background:var(--s1);border:1px solid var(--line2);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.6);overflow:hidden}
+#dock .dh{display:flex;align-items:center;gap:10px;width:100%;padding:0 16px;height:54px;text-align:left}
+#dock .dh b{font-size:12px;letter-spacing:.16em;color:var(--gold)}#dock .dst{flex:1;font-size:13px;font-weight:600;color:var(--amb)}#dock .dst.ok{color:var(--ok)}#dock .dst.bad{color:var(--red)}#dock .dx{color:var(--mut)}
+#dock .db{display:none;padding:0 16px 16px;max-height:76vh;overflow:auto}#dock.open .db{display:block}
+#dock .dcols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#dock .qrbox,#dock .scan{max-width:none;margin:4px 0}
+@media(max-width:560px){#dock .dcols{grid-template-columns:1fr}}
+@media(min-width:900px){body.dockopen .kgrid{padding-right:470px}}
 </style>
 </head>
 <body>
@@ -483,6 +491,20 @@ async function pasteInto(ta){
   try{ta.value=await navigator.clipboard.readText()}catch{toast('Pega manualmente (mantén pulsado)',{kind:'warn'})}
 }
 
+/* registro de cortes de conexión (para saber por qué se cae) */
+function nlog(ev,info){
+  try{const a=store.get('zmb.nlog',[]);a.push({t:Date.now(),ev,v:document.visibilityState,i:info||''});store.set('zmb.nlog',a.slice(-60))}catch{}
+}
+document.addEventListener('visibilitychange',()=>nlog(document.visibilityState==='visible'?'app visible':'app en segundo plano / pantalla apagada'));
+addEventListener('online',()=>nlog('red: online'));addEventListener('offline',()=>nlog('red: offline'));
+function openDiag(){
+  const a=store.get('zmb.nlog',[]).slice().reverse();
+  const m=modal(`<h2>Diagnóstico de conexión</h2><p class="hint" style="margin-top:0">Últimos eventos de este dispositivo. Si se corta, aquí se ve por qué (pantalla apagada, Wi-Fi, etc.).</p>
+    ${a.map(x=>`<div class="hrow" style="padding:8px 0"><div class="n" style="min-width:74px;font-size:13px;font-weight:600">${new Date(x.t).toLocaleTimeString('es-ES')}</div><div class="d" style="color:var(--tx)">${esc(x.ev)}${x.i?`<br><small>${esc(x.i)}</small>`:''}</div></div>`).join('')||'<p class="hint">Sin eventos todavía.</p>'}
+    <div class="r"><button class="btn" data-c>Copiar</button><button class="btn" data-x>Borrar</button></div>`,'wide');
+  $('[data-c]',m).onclick=()=>copyText(a.map(x=>new Date(x.t).toLocaleTimeString('es-ES')+' '+x.ev+(x.i?' ('+x.i+')':'')).join('\n'));
+  $('[data-x]',m).onclick=()=>{store.set('zmb.nlog',[]);m.close()};
+}
 const Net={
   peers:new Map(),bc:null,onMsg:null,seq:0,
   init(onMsg){
@@ -503,21 +525,22 @@ const Net={
     const pc=new RTCPeerConnection({iceServers:[]}); // sin STUN: solo red local
     const p={id:'p'+(++this.seq),pc,dc:null,onopen:null,onfail:null};
     pc.onconnectionstatechange=()=>{
+      nlog('conexión: '+pc.connectionState,p.id);
       if(['failed','closed'].includes(pc.connectionState)){this.drop(p);p.onfail&&p.onfail()}
     };
     return p;
   },
   wire(p,dc){
     p.dc=dc;
-    dc.onopen=()=>{p.onopen&&p.onopen()};
-    dc.onclose=()=>{this.drop(p);p.onfail&&p.onfail()};
+    dc.onopen=()=>{p.t0=Date.now();p.last=Date.now();nlog('✔ conectado',p.id);p.onopen&&p.onopen()};
+    dc.onclose=()=>{nlog('✖ canal cerrado',p.t0?'tras '+Math.round((Date.now()-p.t0)/1000)+' s':'');this.drop(p);p.onfail&&p.onfail()};
     dc.onmessage=e=>{
       p.last=Date.now();let m;try{m=JSON.parse(e.data)}catch{return}
       this.onMsg(m,r=>{r.src=ROLE;try{dc.send(JSON.stringify(r))}catch{}});
     };
   },
   drop(p){try{p.pc.close()}catch{};this.peers.delete(p.id)},
-  sweep(ms){this.peers.forEach(p=>{if(p.dc&&p.dc.readyState==='open'&&p.last&&Date.now()-p.last>ms){this.drop(p);p.onfail&&p.onfail()}})},
+  sweep(ms){this.peers.forEach(p=>{if(p.dc&&p.dc.readyState==='open'&&p.last&&Date.now()-p.last>ms){nlog('✖ sin señal',Math.round((Date.now()-p.last)/1000)+' s sin mensajes');this.drop(p);p.onfail&&p.onfail()}})},
   /* anfitrión (cocina): crea oferta -> código A */
   async hostOffer(){
     const p=this.mkPeer();this.wire(p,p.pc.createDataChannel('zmb'));
@@ -750,6 +773,7 @@ async function startBar(){
   const ping=()=>{Net.send({t:'ping',dev:DEV,w:waiter,open:outstanding().slice(-300).map(o=>o.id)});checkAlive()};
   setInterval(ping,3000);setInterval(()=>{checkAlive();updatePill()},1000);ping();
   keepAwake();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>{if(!barAlive())toast('Sin conexión con cocina',{kind:'warn',ms:7000,action:['RECONECTAR',barPairing]})},3500)});
   syncMenu();setInterval(syncMenu,120000);addEventListener('online',syncMenu);
   syncCloud();setInterval(syncCloud,30000);addEventListener('online',syncCloud);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncCloud()});
 }
@@ -987,13 +1011,14 @@ function barMenu(){
     <button class="mrow" data-a="tot"><i>${ICON.receipt}</i>Marcador de recaudación</button>
     <button class="mrow" data-a="net"><i>${ICON.wifi}</i>Conectar con cocina</button>
     <button class="mrow" data-a="qr"><i>${ICON.qr}</i>Entregar pedidos por QR (sin red)</button>
+    <button class="mrow" data-a="diag"><i>${ICON.wifi}</i>Diagnóstico de conexión</button>
     ${canSwitch()?`<button class="mrow" data-a="role"><i>${ICON.swap}</i>Cambiar de modo</button><button class="mrow" data-a="admin"><i>${ICON.shield}</i>Panel de administración</button>`:''}
     <button class="mrow red" data-a="reset"><i>${ICON.trash}</i>Nueva noche (borrar datos)</button>
     <button class="mrow" data-a="out"><i>${ICON.out}</i>Cerrar sesión</button>`);
   $$('[data-a]',m).forEach(b=>b.onclick=()=>{
     const a=b.dataset.a;m.close();
     if(a==='caja')openReport(orders,`BARRA · dispositivo ${DEV}`,`Pendientes de sincronizar con cocina: ${orders.filter(o=>o.st==='queued'||o.st==='sent').length}`+arqText());
-    else if(a==='arq')openArqueo();else if(a==='tot')openScore(barScore);
+    else if(a==='diag')openDiag();else if(a==='arq')openArqueo();else if(a==='tot')openScore(barScore);
     else if(a==='hist')barHistory();else if(a==='net')barPairing();else if(a==='qr')barQR();else if(a==='role')changeRole();else if(a==='admin')location.href='/admin';else if(a==='out')confirmBox('Para volver a entrar necesitarás internet.','CERRAR SESIÓN',()=>doLogout());
     else if(a==='reset')confirmBox('Se borrarán todos los pedidos de este móvil. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();cart={};updateCart();updatePill();toast('Datos borrados',{kind:'warn'})});
   });
@@ -1140,10 +1165,10 @@ async function startKitchen(){
   $$('#kv [data-v]').forEach(x=>x.classList.toggle('sel',x.dataset.v===kview));
   const snd=()=>{$('#bSnd').innerHTML=soundOn?ICON.bell:ICON.bellOff};snd();
   $('#bSnd').onclick=()=>{soundOn=!soundOn;store.set('zmb.sound',soundOn);snd();if(soundOn)ringNew()};
-  document.body.classList.add('kitchen');
+  document.body.classList.add('kitchen');ensureDock();setTimeout(()=>{if(!kAlive().length)dockSet(true)},1500);
   Net.init(kHandle);
   renderKitchen();
-  setInterval(()=>{tick();kPill();kChip();Net.sweep(45000)},1000);kPill();kChip();
+  let lastN=0;setInterval(()=>{tick();kPill();kChip();Net.sweep(60000);const n=kAlive().length;if(n===0&&lastN>0&&dock&&!dock.open){dock.pinned=false;dockSet(true)}lastN=n},1000);kPill();kChip();
   syncMenu();setInterval(syncMenu,120000);addEventListener('online',syncMenu);
   keepAwake();
   toast('Toca cualquier botón una vez para activar el sonido',{kind:'warn',ms:4000});
@@ -1280,6 +1305,7 @@ function kMenu(){
   const m=modal(`<h2>Menú cocina</h2>${whoLine()}
     <button class="mrow" data-a="net"><i>${ICON.wifi}</i>Conectar camareros</button>
     <button class="mrow" data-a="qr"><i>${ICON.qr}</i>Recibir pedidos por QR (sin red)</button>
+    <button class="mrow" data-a="diag"><i>${ICON.wifi}</i>Diagnóstico de conexión</button>
     <button class="mrow" data-a="sold"><i>${ICON.x}</i>Agotados</button>
     <button class="mrow" data-a="msg"><i>${ICON.bell}</i>Avisar a camareros</button>
     <button class="mrow" data-a="score"><i>${ICON.receipt}</i>Marcador de recaudación</button>
@@ -1290,7 +1316,7 @@ function kMenu(){
   $$('[data-a]',m).forEach(b=>b.onclick=()=>{
     const a=b.dataset.a;m.close();
     if(a==='admin')location.href='/admin';else if(a==='out')confirmBox('Para volver a entrar necesitarás internet.','CERRAR SESIÓN',()=>doLogout());
-    else if(a==='net')hostPairing();else if(a==='qr')qrReceive();else if(a==='sold')openSold();else if(a==='msg')openMsg();else if(a==='score')openScore(kScore);
+    else if(a==='net')hostPairing();else if(a==='qr')qrReceive();else if(a==='diag')openDiag();else if(a==='sold')openSold();else if(a==='msg')openMsg();else if(a==='score')openScore(kScore);
     else if(a==='caja')openReport(orders,'COCINA · todos los pedidos recibidos',`Pendientes de entregar: ${orders.filter(o=>o.st==='new').length}`);
     else if(a==='role')changeRole();
     else if(a==='reset')confirmBox('Se borrarán TODAS las comandas de la cocina y el contador volverá a #001. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();nextNum=1;renderKitchen();toast('Datos borrados',{kind:'warn'})});
@@ -1309,43 +1335,58 @@ function qrReceive(){
   const go=()=>{stop();stop=startScan($('video',m),onCode,()=>{$('[data-n]',m).textContent='Cámara no disponible';$('[data-n]',m).className='st bad'},facing)};
   m.onclose=()=>stop();$('[data-flip]',m).onclick=()=>{facing=facing==='user'?'environment':'user';go()};go();
 }
-function hostPairing(){
-  const m=modal(`<h2>Conectar camarero</h2>
-    <div class="duo">
-      <div><label>1 · EL CAMARERO ESCANEA ESTE QR</label><div class="qrbox"><canvas></canvas></div><div class="st" style="text-align:center;margin-top:8px" data-st>Generando…</div></div>
-      <div><label>2 · ENSEÑA EL QR DE SU MÓVIL A ESTA CÁMARA</label><div class="scan"><video playsinline muted></video><div class="frame"></div></div>
-        <button class="btn full" data-flip>Cambiar cámara</button></div>
-    </div>
-    <details><summary>Usar código de texto (sin cámara)</summary>
-      <label>CÓDIGO A (para el móvil)</label><textarea class="code" rows="2" readonly data-ta></textarea>
-      <div class="r"><button class="btn" data-c>Copiar</button><button class="btn" data-s>Compartir</button></div>
-      <label>CÓDIGO B (del móvil)</label><textarea class="code" rows="2" data-tb></textarea>
-      <div class="r"><button class="btn" data-p>Pegar</button><button class="btn pri" data-ok>Conectar</button></div></details>
-    <h3>CONECTADOS</h3><div id="plist"></div>`,'wide');
-  const st=$('[data-st]',m),ta=$('[data-ta]',m),tb=$('[data-tb]',m);
-  let cur=null,stop=()=>{},facing='user',dead=false;
-  const setSt=(t,c='')=>{st.textContent=t;st.className='st '+c};
+/* Panel fijo de conexión: la tablet siempre muestra su QR y escucha con la cámara.
+   El camarero solo escanea el QR de la tablet y le enseña el suyo: nadie toca la tablet. */
+let dock=null;
+function ensureDock(){
+  if(dock)return dock;
+  const d=document.createElement('aside');d.id='dock';
+  d.innerHTML=`<button class="dh" data-t><b>CONECTAR CAMARERO</b><span class="dst" data-st></span><span class="dx" data-x>▴</span></button>
+    <div class="db"><div class="dcols">
+      <div><label>1 · EL CAMARERO ESCANEA ESTE QR</label><div class="qrbox"><canvas></canvas></div></div>
+      <div><label>2 · ENSEÑA EL QR DE SU MÓVIL AQUÍ</label><div class="scan"><video playsinline muted></video><div class="frame"></div></div><button class="btn full" data-flip>Cambiar cámara</button></div></div>
+      <details><summary>Usar código de texto (sin cámara)</summary>
+        <label>CÓDIGO A (para el móvil)</label><textarea class="code" rows="2" readonly data-ta></textarea>
+        <div class="r"><button class="btn" data-c>Copiar</button><button class="btn" data-s>Compartir</button></div>
+        <label>CÓDIGO B (del móvil)</label><textarea class="code" rows="2" data-tb></textarea>
+        <div class="r"><button class="btn" data-p>Pegar</button><button class="btn pri" data-ok>Conectar</button></div></details>
+      <h3>CONECTADOS</h3><div id="plist"></div></div>`;
+  document.body.append(d);
+  const S={el:d,open:false,cur:null,stop:()=>{},facing:'user',busy:false};dock=S;
+  const q=s=>$(s,d),st=q('[data-st]');
+  const setSt=(t,c='')=>{st.textContent=t;st.className='dst '+c};
+  S.setSt=setSt;
   async function fresh(){
-    if(dead)return;
-    if(cur&&!(cur.dc&&cur.dc.readyState==='open'))Net.drop(cur);
+    if(!S.open||S.busy)return;S.busy=true;
+    if(S.cur&&!(S.cur.dc&&S.cur.dc.readyState==='open'))Net.drop(S.cur);
     setSt('Generando…');
     try{
-      const p=cur=await Net.hostOffer();drawQR($('canvas',m),p.code);ta.value=p.code;setSt('Esperando al camarero…');
-      p.onopen=()=>{setSt('✔ Conectado','ok');buzz(60);setTimeout(fresh,1800)};
-      p.onfail=()=>{if(cur===p){setSt('Se cortó. Generando otro QR…','bad');setTimeout(fresh,800)}};
+      const p=S.cur=await Net.hostOffer();drawQR(q('canvas'),p.code);q('[data-ta]').value=p.code;setSt('Esperando camarero…');
+      p.onopen=()=>{setSt('✔ Conectado','ok');buzz(60);S.cur=null;setTimeout(()=>{S.busy=false;fresh()},1500);setTimeout(()=>{if(kAlive().length&&S.open&&!S.pinned)dockSet(false)},4000)};
+      p.onfail=()=>{if(S.cur===p){setSt('Se cortó. Generando otro QR…','bad');S.cur=null;S.busy=false;setTimeout(fresh,800)}};
     }catch(e){setSt(e.message,'bad')}
+    S.busy=false;
   }
   async function accept(code){
-    if(!cur)return;
-    try{setSt('Conectando…');await Net.hostAccept(cur,code)}catch(e){setSt(e.message,'bad')}
+    if(!S.cur)return;
+    try{setSt('Conectando…');await Net.hostAccept(S.cur,code)}catch(e){setSt(e.message,'bad')}
   }
-  const go=()=>{stop();stop=startScan($('video',m),accept,()=>{setSt('Cámara no disponible: usa el código de texto','bad');$('details',m).open=true;if(!cur)fresh()},facing,()=>{if(!cur)fresh()})};
-  m.onclose=()=>{dead=true;stop();if(cur&&!(cur.dc&&cur.dc.readyState==='open'))Net.drop(cur)};
-  $('[data-flip]',m).onclick=()=>{facing=facing==='user'?'environment':'user';go()};
-  $('[data-c]',m).onclick=()=>copyText(ta.value,ta);$('[data-s]',m).onclick=()=>shareText(ta.value);
-  $('[data-p]',m).onclick=()=>pasteInto(tb);$('[data-ok]',m).onclick=()=>accept(tb.value);
-  kPill();go();setTimeout(()=>{if(!cur)fresh()},4000); // con la cámara activa Chrome muestra la IP real (sin mDNS)
+  S.go=()=>{S.stop();S.stop=startScan(q('video'),accept,()=>{setSt('Cámara no disponible: usa el código de texto','bad');q('details').open=true;if(!S.cur)fresh()},S.facing,()=>{if(!S.cur)fresh()})};
+  S.fresh=fresh;
+  q('[data-t]').onclick=()=>{S.pinned=true;dockSet(!S.open)};
+  q('[data-flip]').onclick=()=>{S.facing=S.facing==='user'?'environment':'user';S.go()};
+  q('[data-c]').onclick=()=>copyText(q('[data-ta]').value,q('[data-ta]'));q('[data-s]').onclick=()=>shareText(q('[data-ta]').value);
+  q('[data-p]').onclick=()=>pasteInto(q('[data-tb]'));q('[data-ok]').onclick=()=>accept(q('[data-tb]').value);
+  return S;
 }
+function dockSet(open){
+  const S=ensureDock();if(S.open===open)return;S.open=open;
+  S.el.classList.toggle('open',open);document.body.classList.toggle('dockopen',open);
+  S.el.querySelector('[data-x]').textContent=open?'▾':'▴';
+  if(open){kPill();S.go();setTimeout(()=>{if(!S.cur)S.fresh()},4000)} // con la cámara activa Chrome muestra la IP real (sin mDNS)
+  else{S.stop();S.stop=()=>{};if(S.cur&&!(S.cur.dc&&S.cur.dc.readyState==='open')){Net.drop(S.cur);S.cur=null}S.setSt(kAlive().length?`${kAlive().length} conectado${kAlive().length>1?'s':''}`:'','ok')}
+}
+function hostPairing(){const S=ensureDock();S.pinned=true;dockSet(!S.open)}
 
 /* =====================================================================
    ARRANQUE

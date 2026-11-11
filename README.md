@@ -15,7 +15,7 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v14` → `zmb-v15`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v15` → `zmb-v16`).
 
 ## Cuentas y panel de administración
 
@@ -42,3 +42,11 @@ Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v14` 
 - **Donativo / redondeo** al cobrar, **arqueo de efectivo** (cuadra o sobra/falta) y **marcador de recaudación** con objetivo.
 - **Copia en la nube**: los pedidos y arqueos suben a Supabase cuando el móvil tiene internet.
 - **/admin → Ventas**: recaudado, forma de cobro, por camarero, lo más vendido, ventas por hora, arqueos y CSV; **Evento y acceso**: nombre, objetivo y código.
+
+## Conexión barra ↔ cocina: guía anti-cortes
+
+- La tablet de cocina muestra **siempre** un panel *Conectar camarero* (QR + cámara). El camarero solo escanea el QR de la tablet y le enseña el suyo; nadie toca la tablet. Si se cae la última conexión, el panel se abre solo.
+- **Menú → Diagnóstico de conexión** (barra y cocina) guarda por qué se corta: pantalla apagada, app en segundo plano, Wi‑Fi, tiempo conectado…
+- Android: apaga "Cambio automático de red" / "Smart network switch" y, si sale "Wi‑Fi sin internet", elige **mantener conexión**. Quita el ahorro de batería del navegador y del hotspot.
+- iPhone: instala la app en la pantalla de inicio, ponla en **Ajustes → Pantalla → Bloqueo automático: Nunca** durante el servicio y no cambies de app.
+- Tablet de cocina: siempre enchufada, brillo bajo, sin pasar a otra app.
