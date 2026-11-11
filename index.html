@@ -218,6 +218,8 @@ const ICON={
  trash:ic('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
  check:ic('<path d="M5 12.5l4.5 4.5L19 7.5"/>',36),
  x:ic('<path d="M6 6l12 12M18 6L6 18"/>',20),
+
+ qr:ic('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M20 20v.01M14 20h.01M17 20h1.5"/>'),
  glass:ic('<path d="M6 4h12l-1.5 16h-9z"/><path d="M6.7 9h10.6"/>',28),
  flame:ic('<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .3 1.2 1 2 2 2 0-3-1-5 1-8z"/>',28)
 };
@@ -331,6 +333,17 @@ async function decDesc(code){
     return{type,sdp};
   }catch{throw new Error('Código no válido o incompleto')}
 }
+/* ---------- Pedido en un QR (entrega en mano, sin red) ---------- */
+async function packOrder(o){
+  const u8=new TextEncoder().encode(JSON.stringify({id:o.id,w:o.w,i:o.items.map(i=>[i.n,i.p,i.q]),ts:o.ts}));
+  return 'Q1~'+(window.CompressionStream?'Z'+b64(await pipe(u8,CompressionStream,'deflate-raw')):'R'+b64(u8));
+}
+async function unpackOrder(code){
+  const [h,z]=code.split('~');if(h!=='Q1'||!z)throw new Error('QR no válido');
+  let u8=unb64(z.slice(1));if(z[0]==='Z')u8=await pipe(u8,DecompressionStream,'deflate-raw');
+  const j=JSON.parse(new TextDecoder().decode(u8));
+  return{id:j.id,w:j.w,items:j.i.map(([n,p,q])=>({n,p,q})),total:j.i.reduce((t,[n,p,q])=>t+Math.round(p*100)*q,0)/100,ts:j.ts};
+}
 /* ---------- QR: dibujar y escanear ---------- */
 function drawQR(canvas,text){
   const q=qrcode(0,'L');q.addData(text);q.make();
@@ -360,7 +373,7 @@ function startScan(video,onCode,onErr,facing,onReady){
               cx.drawImage(video,0,0,cv.width,cv.height);
               const d=cx.getImageData(0,0,cv.width,cv.height),r=jsQR(d.data,d.width,d.height,{inversionAttempts:'dontInvert'});txt=r?r.data:'';
             }
-            if(txt.startsWith('S1')&&(txt!==last||Date.now()-lastT>4000)){last=txt;lastT=Date.now();buzz(40);onCode(txt)}
+            if(/^(S1|Q1)/.test(txt)&&(txt!==last||Date.now()-lastT>4000)){last=txt;lastT=Date.now();buzz(40);onCode(txt)}
           }
         }catch{}
         if(!stop)setTimeout(loop,110);
@@ -664,24 +677,38 @@ function barMenu(){
     <button class="mrow" data-a="caja"><i>${ICON.cash}</i>Cierre de caja</button>
     <button class="mrow" data-a="hist"><i>${ICON.receipt}</i>Mis pedidos</button>
     <button class="mrow" data-a="net"><i>${ICON.wifi}</i>Conectar con cocina</button>
+    <button class="mrow" data-a="qr"><i>${ICON.qr}</i>Entregar pedidos por QR (sin red)</button>
     <button class="mrow" data-a="menu"><i>${ICON.edit}</i>Editar menú / precios</button>
     <button class="mrow" data-a="role"><i>${ICON.swap}</i>Cambiar de modo</button>
     <button class="mrow red" data-a="reset"><i>${ICON.trash}</i>Nueva noche (borrar datos)</button>`);
   $$('[data-a]',m).forEach(b=>b.onclick=()=>{
     const a=b.dataset.a;m.close();
     if(a==='caja')openReport(orders,`BARRA · dispositivo ${DEV}`,`Pendientes de sincronizar con cocina: ${orders.filter(o=>o.st==='queued'||o.st==='sent').length}`);
-    else if(a==='hist')barHistory();else if(a==='net')barPairing();else if(a==='menu')menuEditor();else if(a==='role')changeRole();
+    else if(a==='hist')barHistory();else if(a==='net')barPairing();else if(a==='qr')barQR();else if(a==='menu')menuEditor();else if(a==='role')changeRole();
     else if(a==='reset')confirmBox('Se borrarán todos los pedidos de este móvil. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();cart={};updateCart();updatePill();toast('Datos borrados',{kind:'warn'})});
   });
 }
 function barHistory(){
   const rows=orders.slice(-40).reverse().map(o=>{
-    const s=o.st==='done'?['✔ LISTO','d']:o.st==='acked'?['EN COCINA','k']:['EN COLA','q'];
+    const s=o.st==='done'?['✔ LISTO','d']:(o.st==='acked'||o.st==='hand')?['EN COCINA','k']:['EN COLA','q'];
     return `<div class="hrow"><div class="n">${o.num!=null?'#'+pad(o.num):'···'}</div><div class="d">${o.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}<br>${esc(o.w)} · ${eur(o.total)}</div><div class="s ${s[1]}">${s[0]}</div></div>`}).join('');
   modal(`<h2>Mis pedidos</h2>${rows||'<p class="hint">Todavía no hay pedidos.</p>'}`);
 }
+async function barQR(){
+  const pend=orders.filter(o=>o.st==='queued'||o.st==='sent');
+  if(!pend.length){toast('No hay pedidos pendientes de entregar',{kind:'warn'});return}
+  const codes=await Promise.all(pend.map(packOrder));
+  const m=modal(`<h2>Entregar por QR</h2><p class="hint">Sin red: acércate a la tablet de cocina y enséñale esta pantalla. Se muestran uno tras otro los <b>${pend.length}</b> pedidos pendientes.</p>
+    <div class="qrbox"><canvas></canvas></div><div class="st" style="text-align:center;margin:8px 0" data-st></div>
+    <button class="btn pri full" data-done>Ya entregados ✔</button>`);
+  let i=0;const cv=$('canvas',m),st=$('[data-st]',m);
+  const show=()=>{drawQR(cv,codes[i]);st.textContent=`Pedido ${i+1} de ${codes.length}`;i=(i+1)%codes.length};
+  show();const iv=codes.length>1?setInterval(show,1400):0;m.onclose=()=>clearInterval(iv);
+  $('[data-done]',m).onclick=()=>{pend.forEach(o=>{o.st='hand';DB.put(o)});updatePill();m.close();toast('Marcados como entregados en mano',{kind:'ok'})};
+}
 function barPairing(){
   const m=modal(`<h2>Conectar con cocina</h2>
+    <button class="btn full" data-qr style="margin:0 0 10px">Sin red: entregar pedidos por QR</button>
     <div data-a><p class="hint">Apunta la cámara al <b>QR de la tablet</b> (en la tablet: indicador de conexión).</p>
       <div class="scan"><video playsinline muted></video><div class="frame"></div></div></div>
     <div data-b hidden><p class="hint" style="text-align:center">Ahora enséñale <b>este QR</b> a la cámara de la tablet</p>
@@ -702,6 +729,7 @@ function barPairing(){
     }catch(err){toast(esc(err.message),{kind:'bad',ms:3000})}
   };
   stop=startScan($('video',m),answer,()=>{$('[data-a]',m).hidden=true;$('details',m).open=true;toast('Cámara no disponible: usa el código de texto',{kind:'warn',ms:3500})},'environment');
+  $('[data-qr]',m).onclick=()=>{m.close();barQR()};
   $('[data-p]',m).onclick=()=>pasteInto($('[data-ta]',m));
   $('[data-g]',m).onclick=()=>answer($('[data-ta]',m).value);
   $('[data-c]',m).onclick=()=>copyText($('[data-tb]',m).value,$('[data-tb]',m));
@@ -724,10 +752,11 @@ async function startKitchen(){
   <header class="kh"><div class="brand"><b>${BRAND}</b><small>COCINA</small></div><div class="cnt" id="cnt">0 PENDIENTES</div>
     <button class="pill off" id="pill"></button><div class="sp"></div>
     <button class="ico" id="bSnd" aria-label="Sonido"></button>
+    <button class="ico" id="bQR" aria-label="Recibir por QR">${ICON.qr}</button>
     <button class="ico" id="bRec" aria-label="Entregadas">${ICON.undo}</button>
     <button class="ico" id="bMenu" aria-label="Menú">${ICON.menu}</button></header>
   <main class="kgrid" id="kgrid"><div class="empty" id="empty"><b>${ICON.check}</b>Sin comandas pendientes</div></main>`;
-  $('#bMenu').onclick=kMenu;$('#pill').onclick=hostPairing;$('#bRec').onclick=recentList;
+  $('#bQR').onclick=qrReceive;$('#bMenu').onclick=kMenu;$('#pill').onclick=hostPairing;$('#bRec').onclick=recentList;
   const snd=()=>{$('#bSnd').innerHTML=soundOn?ICON.bell:ICON.bellOff};snd();
   $('#bSnd').onclick=()=>{soundOn=!soundOn;store.set('zmb.sound',soundOn);snd();if(soundOn)ringNew()};
   Net.init(kHandle);
@@ -810,16 +839,30 @@ function recentList(){
 function kMenu(){
   const m=modal(`<h2>Menú cocina</h2>
     <button class="mrow" data-a="net"><i>${ICON.wifi}</i>Conectar camareros</button>
+    <button class="mrow" data-a="qr"><i>${ICON.qr}</i>Recibir pedidos por QR (sin red)</button>
     <button class="mrow" data-a="caja"><i>${ICON.cash}</i>Cierre de caja (todas las barras)</button>
     <button class="mrow" data-a="role"><i>${ICON.swap}</i>Cambiar de modo</button>
     <button class="mrow red" data-a="reset"><i>${ICON.trash}</i>Nueva noche (borrar datos)</button>`);
   $$('[data-a]',m).forEach(b=>b.onclick=()=>{
     const a=b.dataset.a;m.close();
-    if(a==='net')hostPairing();
+    if(a==='net')hostPairing();else if(a==='qr')qrReceive();
     else if(a==='caja')openReport(orders,'COCINA · todos los pedidos recibidos',`Pendientes de entregar: ${orders.filter(o=>o.st==='new').length}`);
     else if(a==='role')changeRole();
     else if(a==='reset')confirmBox('Se borrarán TODAS las comandas de la cocina y el contador volverá a #001. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();nextNum=1;renderKitchen();toast('Datos borrados',{kind:'warn'})});
   });
+}
+function qrReceive(){
+  const m=modal(`<h2>Recibir pedidos por QR</h2><p class="hint">Sin red: el camarero enseña la pantalla de su móvil a la cámara. Cada pedido nuevo suena.</p>
+    <div class="scan"><video playsinline muted></video><div class="frame"></div></div>
+    <div class="st ok" style="text-align:center;margin:6px 0" data-n>Recibidos: 0</div><button class="btn full" data-flip>Cambiar cámara</button>`);
+  let n=0,facing='user',stop=()=>{};
+  const onCode=async c=>{
+    if(!c.startsWith('Q1'))return;
+    try{const o=await unpackOrder(c);const had=byId.has(o.id);const r=ingest(o);if(!had){n++;$('[data-n]',m).textContent=`Recibidos: ${n} · último #${pad(r.num)}`}}
+    catch{toast('QR no válido',{kind:'bad'})}
+  };
+  const go=()=>{stop();stop=startScan($('video',m),onCode,()=>{$('[data-n]',m).textContent='Cámara no disponible';$('[data-n]',m).className='st bad'},facing)};
+  m.onclose=()=>stop();$('[data-flip]',m).onclick=()=>{facing=facing==='user'?'environment':'user';go()};go();
 }
 function hostPairing(){
   const m=modal(`<h2>Conectar camarero</h2>
