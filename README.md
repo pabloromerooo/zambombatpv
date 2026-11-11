@@ -1,4 +1,4 @@
-# Zambomba · Comandas (TPV offline)
+# Solera TPV (by Vølden)
 
 Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **cocina** (tablet). Funciona sin internet y sin servidor: datos en IndexedDB y sincronización por WebRTC en la red Wi-Fi local.
 
@@ -11,4 +11,4 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 En cocina: pulsar el indicador de conexión → copiar CÓDIGO A al móvil. En el móvil: pegar A, generar CÓDIGO B y pegarlo en cocina.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v1` → `zmb-v2`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v3` → `zmb-v4`).
