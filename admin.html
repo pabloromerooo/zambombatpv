@@ -53,6 +53,12 @@ label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:
 .code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:22px!important;letter-spacing:.06em;text-align:center}
 #toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99;background:rgba(24,24,27,.96);border:1px solid var(--line2);border-radius:12px;padding:10px 16px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.25s}
 #toast.on{opacity:1}#toast.ok{border-color:rgba(63,191,139,.6);color:#9be8c6}#toast.bad{border-color:rgba(255,92,92,.6);color:#ff9b9b}
+h3{margin:0 0 10px;font-size:11px;color:var(--mut);letter-spacing:.16em;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.kpi{background:var(--s1);border:1px solid var(--line2);border-radius:16px;padding:14px}.kpi small{font-size:10.5px;letter-spacing:.14em;color:var(--mut);font-weight:600}.kpi b{display:block;font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.goalbar{height:18px;border-radius:99px;background:var(--s3);overflow:hidden}.goalbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--ok));border-radius:99px}
+.pbar{position:relative;display:flex;justify-content:space-between;gap:10px;padding:8px 10px;margin-bottom:6px;border-radius:10px;overflow:hidden;font-size:14px;background:var(--s2)}.pbar i{position:absolute;left:0;top:0;bottom:0;background:rgba(201,163,106,.22)}.pbar span,.pbar b{position:relative}
+.hist{display:flex;align-items:flex-end;gap:6px;height:150px}.hist div{flex:1;max-width:70px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative}.hist i{display:block;width:100%;background:var(--gold);border-radius:6px 6px 0 0}.hist small{font-size:10px;color:var(--mut);margin-top:4px}.hist em{font-style:normal;font-size:10px;position:absolute;top:0;color:var(--mut)}
+@media(max-width:640px){.kpis{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
 @media(max-width:640px){.row{grid-template-columns:1fr 96px;}.row .sw,.row .acts{grid-column:1/-1}th:nth-child(3),td:nth-child(3){display:none}}
 </style>
 </head>
@@ -106,10 +112,10 @@ function showLogin(msg=''){
 }
 
 /* ---------- app ---------- */
-let tab='carta',items=[],team=[],code='';
+let tab='ventas',items=[],team=[],code='',goal=0,evName='',salesT=0;
 async function showApp(){
   $('#app').innerHTML=`<div class="wrap"><div class="top"><div class="brand">Solera<small>ADMINISTRACIÓN</small></div><div class="sp"></div><span class="who">${esc(S.name)} · ${esc(S.email)}</span><button class="btn sm" id="out">Cerrar sesión</button></div>
-    <div class="tabs">${[['carta','Carta y precios'],['equipo','Equipo'],['acceso','Código de acceso'],['cocina','Cocina y barra']].map(([k,l])=>`<button class="tab" data-t="${k}">${l}</button>`).join('')}</div><div id="view"></div></div>`;
+    <div class="tabs">${[['ventas','Ventas'],['carta','Carta y precios'],['equipo','Equipo'],['acceso','Evento y acceso'],['cocina','Cocina y barra']].map(([k,l])=>`<button class="tab" data-t="${k}">${l}</button>`).join('')}</div><div id="view"></div></div>`;
   $('#out').onclick=logout;
   $$('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});
   draw();
@@ -118,9 +124,10 @@ async function draw(){
   $$('.tab').forEach(b=>b.classList.toggle('sel',b.dataset.t===tab));
   const v=$('#view');v.innerHTML='<p class="hint">Cargando…</p>';
   try{
+    if(tab==='ventas'){await drawSales();return}
     if(tab==='carta'){items=await api('/rest/v1/menu_items?select=*&order=sort.asc');drawMenu()}
     else if(tab==='equipo'){team=await api('/rest/v1/profiles?select=id,name,email,role,active,created_at&order=created_at.asc');drawTeam()}
-    else if(tab==='acceso'){const r=await api('/rest/v1/settings?key=eq.access_code&select=value');code=r&&r[0]?r[0].value:'';drawAccess()}
+    else if(tab==='acceso'){const r=await api('/rest/v1/settings?select=key,value&key=in.(access_code,goal,event_name)');code='';goal=0;evName='';(r||[]).forEach(x=>{if(x.key==='access_code')code=x.value;if(x.key==='goal')goal=Number(x.value)||0;if(x.key==='event_name')evName=x.value||''});drawAccess()}
     else drawKitchen();
   }catch(e){
     if(e.status===401||e.status===400){logout();return}
@@ -132,10 +139,10 @@ async function draw(){
 const groups=()=>{const m=new Map();items.slice().sort((a,b)=>a.sort-b.sort).forEach(i=>{if(!m.has(i.category))m.set(i.category,[]);m.get(i.category).push(i)});return [...m]};
 function drawMenu(){
   const g=groups();
-  $('#view').innerHTML=`<h2>Carta y precios</h2><p class="hint">Los cambios se guardan solos y llegan a los móviles cuando tengan internet. “Disponible” apagado = el producto no aparece en barra (agotado).</p>
+  $('#view').innerHTML=`<h2>Carta y precios</h2><p class="hint">Los cambios se guardan solos y llegan a los móviles cuando tengan internet. “Disponible” apagado = el producto no aparece en barra. Cada categoría va a COCINA o a BARRA: así la tablet puede separar comida y bebidas. Para marcar algo agotado durante el servicio, hazlo desde la cocina (llega al instante).</p>
   ${g.map(([cat,list],gi)=>`<div class="card" data-cat="${esc(cat)}">
     <div class="chead"><input type="text" value="${esc(cat)}" data-rencat="${esc(cat)}" maxlength="30">
-      <button class="btn sm" data-mvcat="${gi}" data-d="-1" ${gi===0?'disabled':''}>↑</button><button class="btn sm" data-mvcat="${gi}" data-d="1" ${gi===g.length-1?'disabled':''}>↓</button>
+      <select data-st="${esc(cat)}" title="Dónde se prepara" style="width:auto;height:34px"><option value="cocina" ${list[0]&&list[0].station!=='barra'?'selected':''}>Va a COCINA</option><option value="barra" ${list[0]&&list[0].station==='barra'?'selected':''}>Va a BARRA</option></select><button class="btn sm" data-mvcat="${gi}" data-d="-1" ${gi===0?'disabled':''}>↑</button><button class="btn sm" data-mvcat="${gi}" data-d="1" ${gi===g.length-1?'disabled':''}>↓</button>
       <button class="btn sm pri" data-addprod="${esc(cat)}">＋ Producto</button><button class="btn sm red" data-delcat="${esc(cat)}">Borrar categoría</button></div>
     ${list.map((i,ii)=>`<div class="row ${i.active?'':'off'}" data-id="${i.id}">
       <input type="text" value="${esc(i.name)}" data-f="name" maxlength="40"><input type="number" step="0.05" min="0" inputmode="decimal" value="${Number(i.price)}" data-f="price">
@@ -147,6 +154,7 @@ function drawMenu(){
   v.onchange=async e=>{
     const t=e.target,row=t.closest('.row');
     try{
+      if(t.dataset.st!==undefined){await api(`/rest/v1/menu_items?category=eq.${encodeURIComponent(t.dataset.st)}`,{method:'PATCH',body:{station:t.value},headers:{Prefer:'return=minimal'}});items.forEach(i=>{if(i.category===t.dataset.st)i.station=t.value});toast('Destino guardado ✓');return}
       if(t.dataset.rencat!==undefined){
         const nv=t.value.trim(),old=t.dataset.rencat;if(!nv||nv===old){t.value=old;return}
         await api(`/rest/v1/menu_items?category=eq.${encodeURIComponent(old)}`,{method:'PATCH',body:{category:nv},headers:{Prefer:'return=minimal'}});
@@ -174,14 +182,14 @@ function drawMenu(){
 async function addItem(cat){
   const mx=items.reduce((m,i)=>Math.max(m,i.sort),0);
   const same=items.filter(i=>i.category===cat),sort=same.length?Math.max(...same.map(i=>i.sort))+1:mx+1000;
-  const r=await api('/rest/v1/menu_items',{method:'POST',body:{category:cat,name:'Nuevo producto',price:0,sort,active:false},headers:{Prefer:'return=representation'}});
+  const r=await api('/rest/v1/menu_items',{method:'POST',body:{category:cat,name:'Nuevo producto',price:0,sort,active:false,station:same.length?same[0].station:(/^bebida/i.test(cat)?'barra':'cocina')},headers:{Prefer:'return=representation'}});
   items.push(r[0]);drawMenu();toast('Producto añadido (edítalo y actívalo)');
 }
 async function move(g,ref,d,isCat){
   const order=g.map(([c,l])=>[c,l.slice()]);
   if(isCat){const i=ref,j=i+d;if(j<0||j>=order.length)return;[order[i],order[j]]=[order[j],order[i]]}
   else{for(const [c,l] of order){const i=l.findIndex(x=>x.id===ref);if(i>=0){const j=i+d;if(j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];break}}}
-  const rows=[];order.forEach(([c,l],gi)=>l.forEach((it,ii)=>{const s=(gi+1)*1000+(ii+1)*10;if(it.sort!==s){it.sort=s;rows.push({id:it.id,category:it.category,name:it.name,price:it.price,sort:s,active:it.active})}}));
+  const rows=[];order.forEach(([c,l],gi)=>l.forEach((it,ii)=>{const s=(gi+1)*1000+(ii+1)*10;if(it.sort!==s){it.sort=s;rows.push({id:it.id,category:it.category,name:it.name,price:it.price,sort:s,active:it.active,station:it.station||'cocina'})}}));
   if(rows.length)await api('/rest/v1/menu_items?on_conflict=id',{method:'POST',body:rows,headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
   drawMenu();
 }
@@ -204,15 +212,51 @@ function drawTeam(){
 
 /* ---------- código de acceso ---------- */
 function drawAccess(){
-  $('#view').innerHTML=`<h2>Código de acceso</h2><p class="hint">Es el código que hay que escribir para crear una cuenta (camareros y cocina). Cámbialo cuando quieras: las cuentas ya creadas siguen funcionando, solo afecta a registros nuevos.</p>
-  <div class="card"><label style="margin-top:0">CÓDIGO ACTUAL</label><input type="text" class="code" id="code" value="${esc(code)}" maxlength="40" autocapitalize="off">
+  $('#view').innerHTML=`<h2>Evento y acceso</h2><p class="hint">Estos datos llegan a los móviles y a la cocina cuando tengan internet.</p>
+  <div class="card"><label style="margin-top:0">NOMBRE DEL EVENTO</label><input type="text" id="evn" value="${esc(evName)}" maxlength="40" placeholder="Zambomba solidaria">
+  <label>OBJETIVO DE RECAUDACIÓN (€) — sale en el marcador</label><input type="number" id="goal" min="0" step="1" inputmode="numeric" value="${goal||''}" placeholder="0 = sin objetivo">
+  <div style="margin-top:12px"><button class="btn pri" id="sevt">Guardar evento</button></div></div>
+  <div class="card"><label style="margin-top:0">CÓDIGO DEL EVENTO (para crear cuenta)</label><input type="text" class="code" id="code" value="${esc(code)}" maxlength="40" autocapitalize="off">
   <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="save">Guardar código</button><button class="btn" id="gen">Generar uno nuevo</button></div></div>
-  <p class="hint">Cómo se registra el personal: abrir Solera TPV → <b>Crear cuenta</b> → nombre, correo, contraseña, “Camarero” o “Cocina” y este código.</p>`;
+  <p class="hint">Cómo se registra el personal: abrir Solera TPV → <b>Crear cuenta</b> → nombre, correo, contraseña, “Camarero” o “Cocina” y este código. Cambiar el código solo afecta a registros nuevos.</p>`;
+  const put=(k,v)=>api('/rest/v1/settings?on_conflict=key',{method:'POST',body:[{key:k,value:String(v)}],headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
+  $('#sevt').onclick=async()=>{try{await put('event_name',$('#evn').value.trim());await put('goal',Math.max(0,Number($('#goal').value)||0));goal=Number($('#goal').value)||0;toast('Evento guardado ✓')}catch(x){toast(x.net?'Sin conexión':x.message,'bad')}};
   $('#gen').onclick=()=>{$('#code').value='solera-'+String(Math.floor(Math.random()*10000)).padStart(4,'0')};
   $('#save').onclick=async()=>{
     const v=$('#code').value.trim();if(v.length<4){toast('Mínimo 4 caracteres','bad');return}
-    try{await api('/rest/v1/settings?key=eq.access_code',{method:'PATCH',body:{value:v},headers:{Prefer:'return=minimal'}});code=v;toast('Código guardado ✓')}catch(x){toast(x.net?'Sin conexión':x.message,'bad')}
+    try{await put('access_code',v);code=v;toast('Código guardado ✓')}catch(x){toast(x.net?'Sin conexión':x.message,'bad')}
   };
+}
+
+/* ---------- ventas ---------- */
+async function loadAll(path){let out=[],from=0;for(;;){const r=await api(path,{headers:{Range:`${from}-${from+999}`,'Range-Unit':'items'}});out=out.concat(r||[]);if(!r||r.length<1000)break;from+=1000}return out}
+async function drawSales(){
+  const [os,arq,st]=await Promise.all([loadAll('/rest/v1/orders?select=*&order=ts.asc'),loadAll('/rest/v1/cash_counts?select=*&order=ts.asc'),api('/rest/v1/settings?select=key,value&key=in.(goal,event_name)')]);
+  (st||[]).forEach(x=>{if(x.key==='goal')goal=Number(x.value)||0;if(x.key==='event_name')evName=x.value||''});
+  const ok=os.filter(o=>o.st!=='void'),voids=os.length-ok.length,c=n=>Math.round(Number(n||0)*100);
+  const tot=ok.reduce((s,o)=>s+c(o.total),0),don=ok.reduce((s,o)=>s+c(o.don),0),all=tot+don;
+  const by=(fn,val)=>{const m=new Map();ok.forEach(o=>fn(o).forEach(([k,v])=>{const e=m.get(k)||{n:0,c:0,q:0};e.n++;e.c+=v.c;e.q+=v.q||0;m.set(k,e)}));return [...m.entries()]};
+  const pays=by(o=>[[o.pay||'—',{c:c(o.total)+c(o.don)}]]),wts=by(o=>[[o.waiter||'?',{c:c(o.total)}]]);
+  const pm=new Map();ok.forEach(o=>(o.items||[]).forEach(i=>{const e=pm.get(i.n)||{q:0,c:0};e.q+=i.q;e.c+=c(i.p)*i.q;pm.set(i.n,e)}));
+  const prods=[...pm.entries()].sort((a,b)=>b[1].c-a[1].c),pmax=Math.max(1,...prods.map(p=>p[1].c));
+  const hrs=new Array(24).fill(0);ok.forEach(o=>{hrs[new Date(Number(o.ts)).getHours()]+=c(o.total)});const hmax=Math.max(1,...hrs),hs=hrs.findIndex(x=>x>0),he=23-[...hrs].reverse().findIndex(x=>x>0);
+  const e=n=>eur(n/100),pct=goal?Math.min(100,all/100/goal*100):0;
+  const arqRows=arq.map(x=>`<tr><td>${esc(x.name||'')}</td><td class="tag">${new Date(Number(x.ts)).toLocaleString('es-ES')}</td><td>${eur(x.expected)}</td><td>${eur(x.counted)}</td><td style="color:${Number(x.diff)===0?'var(--ok)':'var(--amb)'};font-weight:700">${Number(x.diff)===0?'Cuadra':(x.diff>0?'Sobra ':'Falta ')+eur(Math.abs(x.diff))}</td></tr>`).join('');
+  $('#view').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h2 style="flex:1;margin:0">${esc(evName||'Ventas')}</h2><button class="btn sm" id="rf">↻ Actualizar</button><button class="btn sm" id="csv">⬇ CSV</button></div>
+  <p class="hint">Actualizado ${new Date().toLocaleTimeString('es-ES')} · se refresca solo cada 30 s. Solo incluye pedidos de móviles que ya hayan tenido internet.</p>
+  <div class="kpis"><div class="kpi"><small>RECAUDADO</small><b>${e(all)}</b></div><div class="kpi"><small>PEDIDOS</small><b>${ok.length}</b></div><div class="kpi"><small>TICKET MEDIO</small><b>${ok.length?e(Math.round(tot/ok.length)):'—'}</b></div><div class="kpi"><small>DONATIVOS</small><b>${e(don)}</b></div></div>
+  ${goal?`<div class="card"><div class="goalbar"><i style="width:${pct}%"></i></div><div class="hint" style="margin:6px 0 0;text-align:center">${Math.round(all/100/goal*100)}% de ${eur(goal)}</div></div>`:''}
+  <div class="grid2"><div class="card"><h3>FORMA DE COBRO</h3><table><tbody>${pays.map(([k,v])=>`<tr><td>${esc(k==='efectivo'?'Efectivo':k==='tarjeta'?'Tarjeta':k)}</td><td>${v.n} ped</td><td style="text-align:right;font-weight:700">${e(v.c)}</td></tr>`).join('')||'<tr><td class="tag">Sin datos</td></tr>'}</tbody></table></div>
+  <div class="card"><h3>POR CAMARERO</h3><table><tbody>${wts.sort((a,b)=>b[1].c-a[1].c).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n} ped</td><td style="text-align:right;font-weight:700">${e(v.c)}</td></tr>`).join('')||'<tr><td class="tag">Sin datos</td></tr>'}</tbody></table></div></div>
+  <div class="card"><h3>LO MÁS VENDIDO</h3>${prods.map(([n,v])=>`<div class="pbar"><span>${esc(n)}</span><i style="width:${Math.max(2,v.c/pmax*100)}%"></i><b>${v.q} · ${e(v.c)}</b></div>`).join('')||'<p class="hint">Sin datos</p>'}</div>
+  <div class="card"><h3>VENTAS POR HORA</h3><div class="hist">${hs<0?'<p class="hint">Sin datos</p>':hrs.slice(hs,he+1).map((v,i)=>`<div><i style="height:${Math.max(2,v/hmax*100)}%"></i><small>${(hs+i)%24}h</small><em>${v?Math.round(v/100):''}</em></div>`).join('')}</div></div>
+  <div class="card"><h3>ARQUEOS DE EFECTIVO</h3>${arq.length?`<table><thead><tr><th>CAMARERO</th><th>HORA</th><th>DEBÍA</th><th>CONTADO</th><th></th></tr></thead><tbody>${arqRows}</tbody></table>`:'<p class="hint">Aún no hay arqueos.</p>'}</div>
+  <p class="hint">${voids} pedidos anulados no cuentan.</p>
+  <div style="margin-top:24px"><button class="btn red sm" id="wipe">Borrar datos de la noche (pedidos y arqueos)</button></div>`;
+  $('#rf').onclick=()=>draw();
+  $('#csv').onclick=()=>{let t='\ufeffFecha;Camarero;Pedido;Mesa;Productos;Total;Donativo;Cobro;Estado\n';os.forEach(o=>{t+=`${new Date(Number(o.ts)).toLocaleString('es-ES')};"${o.waiter}";${o.num||''};"${o.table_ref||''}";"${(o.items||[]).map(i=>i.q+'x '+i.n+(i.x?' ('+i.x+')':'')).join(', ').replace(/"/g,'""')}";${Number(o.total).toFixed(2).replace('.',',')};${Number(o.don||0).toFixed(2).replace('.',',')};${o.pay||''};${o.st}\n`});const b=new Blob([t],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download='ventas-solera.csv';document.body.append(l);l.click();l.remove()};
+  $('#wipe').onclick=async()=>{if(prompt('Esto borra TODOS los pedidos y arqueos guardados en la nube. Escribe BORRAR para confirmar')!=='BORRAR')return;try{await api('/rest/v1/orders?id=neq.',{method:'DELETE',headers:{Prefer:'return=minimal'}});await api('/rest/v1/cash_counts?id=neq.',{method:'DELETE',headers:{Prefer:'return=minimal'}});toast('Datos borrados');draw()}catch(x){toast(x.message,'bad')}};
+  clearInterval(salesT);salesT=setInterval(()=>{if(tab==='ventas'&&document.visibilityState==='visible'&&!document.activeElement.closest('#view button:active'))draw()},30000);
 }
 
 /* ---------- cocina / barra ---------- */

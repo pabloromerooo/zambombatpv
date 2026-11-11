@@ -15,7 +15,7 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v12` → `zmb-v13`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v13` → `zmb-v14`).
 
 ## Cuentas y panel de administración
 
@@ -30,3 +30,15 @@ Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v12` 
 - Al pulsar **ENVIAR A COCINA** se pregunta cómo han pagado: efectivo (con cálculo de cambio) o tarjeta.
 - **Menú → Mis pedidos** muestra los pedidos activos; cada unidad tiene una casilla para ir tachando lo que ya se ha servido.
 - El cierre de caja incluye el desglose por forma de cobro y lo pendiente de cobrar.
+
+## Funciones de servicio (v2)
+
+- **Marchando**: cocina pulsa *Empezar* y el camarero ve "🔥 marchando" en su móvil; después *Listo*.
+- **Notas por producto** (✎ en cada producto: sin hielo, sin sal… o texto libre) y **mesa/nombre** del pedido.
+- **Estaciones**: cada categoría va a COCINA o a BARRA (se elige en `/admin`). La tablet puede ver *Todo / Cocina / Barra*; un pedido mixto se completa cuando ambas partes están listas.
+- **Agotados en vivo**: cocina marca lo que se acabó y desaparece de todas las barras conectadas.
+- **Anular / Editar** un pedido (mientras cocina no lo haya empezado) y **⚡ Prisa** desde "Mis pedidos".
+- **Avisos** de cocina a camareros (📢), a todos o a uno.
+- **Donativo / redondeo** al cobrar, **arqueo de efectivo** (cuadra o sobra/falta) y **marcador de recaudación** con objetivo.
+- **Copia en la nube**: los pedidos y arqueos suben a Supabase cuando el móvil tiene internet.
+- **/admin → Ventas**: recaudado, forma de cobro, por camarero, lo más vendido, ventas por hora, arqueos y CSV; **Evento y acceso**: nombre, objetivo y código.
