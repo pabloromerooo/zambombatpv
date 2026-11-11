@@ -703,12 +703,13 @@ const whoLine=()=>{const s=getSess();return s?`<p class="who">Sesión: <b>${esc(
 const errEs=m=>/Invalid login/i.test(m)?'Correo o contraseña incorrectos':/rate limit|too many/i.test(m)?'Demasiados intentos. Espera un minuto.':m;
 function showHubLogin(){
   const flash=store.get('zmb.flash','');store.set('zmb.flash','');
+  const qc=new URLSearchParams(location.search).get('c')||'';
   $('#app').innerHTML=`<div class="picker">
     <div class="logo">${BRAND}</div><div class="by">TPV · SERVIDOR LOCAL</div>
     <form id="lf" novalidate>
       <label>NOMBRE</label><input name="name" autocomplete="name" maxlength="40" placeholder="Tu nombre">
       <label>SOY</label><div class="seg"><button type="button" class="sel" data-rl="camarero">Camarero</button><button type="button" data-rl="cocina">Cocina</button></div>
-      <label>CÓDIGO DEL EVENTO</label><input name="code" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="Te lo da el administrador">
+      <div id="cwrap"${qc?' style="display:none"':''}><label>CÓDIGO DEL EVENTO</label><input name="code" value="${esc(qc)}" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="Te lo da el administrador"></div>
       <div class="st bad" id="lerr" style="margin:10px 0 0;min-height:20px">${esc(flash)}</div>
       <button class="btn pri full" id="lgo" style="height:56px;font-size:16px;margin-top:6px">Entrar</button>
     </form></div>`;
@@ -720,12 +721,12 @@ function showHubLogin(){
     go.disabled=true;go.textContent='Un momento…';
     try{
       const r=await fetch('/api/join?code='+encodeURIComponent(code),{cache:'no-store'});
-      if(!r.ok){err.textContent='Código incorrecto';go.disabled=false;go.textContent='Entrar';return}
+      if(!r.ok){err.textContent='Código incorrecto';$('#cwrap').style.display='';go.disabled=false;go.textContent='Entrar';return}
       const uid='local-'+name.toLowerCase().replace(/\W+/g,'-');
       const s={at:'',rt:'',exp:Date.now()+3e11,uid,name,email:'',role,ver:Date.now(),local:true};
       store.set('zmb.hubcode',code);
       if(store.get('zmb.uid','')!==uid){store.set('zmb.uid',uid);store.set('zmb.w',name.slice(0,14));store.set('zmb.cart',{})}
-      saveSess(s);location.hash='';location.reload();
+      saveSess(s);history.replaceState(null,'',location.pathname);location.hash='';location.reload();
     }catch{err.textContent='No se encuentra el servidor';go.disabled=false;go.textContent='Entrar'}
   };
 }
@@ -1349,10 +1350,11 @@ function openMsg(toDev,tag){
 async function openLink(){
   let i={ips:[],port:8787};try{i=await (await fetch('/api/info',{cache:'no-store'})).json()}catch{}
   const urls=i.ips.map(ip=>`http://${ip}:${i.port}`);
-  const m=modal(`<h2>Enlace para los móviles</h2><p class="hint" style="margin-top:0">Con el Wi-Fi del evento activado, los camareros abren este enlace (o escanean el QR con la cámara del móvil), entran con su nombre y el código del evento y se quedan conectados aunque cierren la app.</p>
+  const hc=store.get('zmb.hubcode','');const qrUrl=u=>u+(hc?'/?c='+encodeURIComponent(hc):'');
+  const m=modal(`<h2>Enlace para los móviles</h2><p class="hint" style="margin-top:0">Con el Wi-Fi del evento activado, los camareros escanean este QR con la cámara del móvil, escriben solo su nombre y se quedan conectados aunque cierren la app.</p>
     ${urls.map((u,k)=>`<div class="qrbox" style="max-width:240px"><canvas data-q="${k}"></canvas></div><p style="text-align:center;font-size:20px;font-weight:700;margin:6px 0 16px;word-break:break-all">${esc(u)}</p>`).join('')||'<p class="hint">No hay red Wi-Fi activa en esta tablet.</p>'}
     <p class="hint">Conectados ahora: ${(i.clients||[]).filter(c=>c.role==='barra').length} móvil(es).</p>`);
-  urls.forEach((u,k)=>drawQR($(`[data-q="${k}"]`,m),u));
+  urls.forEach((u,k)=>drawQR($(`[data-q="${k}"]`,m),qrUrl(u)));
 }
 /* ---------- agotados en vivo ---------- */
 function openSold(){

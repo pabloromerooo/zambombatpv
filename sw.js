@@ -1,5 +1,5 @@
 // Sube el número cuando cambies index.html para forzar la actualización en los móviles
-const V='zmb-v16',FILES=['./','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png'];
+const V='zmb-v17',FILES=['./','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png'];
 // Safari/Chrome rechazan servir desde un service worker una respuesta que venga de una redirección
 // (p. ej. Cloudflare redirige /index.html -> /). Se devuelve siempre una copia "limpia".
 const clean=async r=>{
