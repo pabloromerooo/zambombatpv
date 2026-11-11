@@ -15,7 +15,7 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v9` → `zmb-v10`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v10` → `zmb-v11`).
 
 ## Cuentas y panel de administración
 
@@ -27,6 +27,6 @@ Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v9` �
 
 ## Cobros y entrega en barra
 
-- Al pulsar **ENVIAR A COCINA** se pregunta cómo han pagado: efectivo (con cálculo de cambio), tarjeta, Bizum, invitación o *cobrar después*.
-- **Menú → Mis pedidos** muestra los pedidos activos; cada unidad tiene una casilla para ir tachando lo que ya se ha servido, y los pendientes de cobro tienen botón *Cobrar*.
+- Al pulsar **ENVIAR A COCINA** se pregunta cómo han pagado: efectivo (con cálculo de cambio) o tarjeta.
+- **Menú → Mis pedidos** muestra los pedidos activos; cada unidad tiene una casilla para ir tachando lo que ya se ha servido.
 - El cierre de caja incluye el desglose por forma de cobro y lo pendiente de cobrar.

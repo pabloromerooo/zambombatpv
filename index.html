@@ -764,16 +764,16 @@ function updateCart(bumpName,bump){
   $('#clr').style.display=items.length?'':'none';
   store.set('zmb.cart',cart);
 }
-const PAYS={efectivo:['Efectivo','💶'],tarjeta:['Tarjeta','💳'],bizum:['Bizum','📱'],invitacion:['Invitación','🎁']};
+const PAYS={efectivo:['Efectivo','💶'],tarjeta:['Tarjeta','💳']};
 const givenOf=(o,i)=>(o.g&&o.g[i])||0;
 const fullyGiven=o=>o.items.every((it,i)=>givenOf(o,i)>=it.q);
-const isActive=o=>!fullyGiven(o)||!o.paid;
+const isActive=o=>!fullyGiven(o)||o.paid===false;
 /* cobro: efectivo con calculadora de cambio, tarjeta, Bizum, invitación o cobrar luego */
 function askPay(total,onPick,opts={}){
   const m=modal(`<h2>¿Cómo han pagado?</h2><div class="paytot">${eur(total)}</div>
     ${Object.entries(PAYS).map(([k,[l,ic]])=>`<button class="payb" data-p="${k}"><i>${ic}</i>${l}</button>`).join('')}
-    ${opts.later===false?'':'<button class="payb" data-p="later" style="color:var(--mut)"><i>⏳</i>Cobrar después</button>'}`);
-  const pick=k=>{m.onclose=null;m.close();onPick(k==='later'?null:k)};
+`);
+  const pick=k=>{m.onclose=null;m.close();onPick(k)};
   $$('[data-p]',m).forEach(b=>b.onclick=()=>{
     const k=b.dataset.p;if(k!=='efectivo'){pick(k);return}
     const amts=[...new Set([Math.ceil(total),5,10,20,50].filter(a=>a>=total))].sort((a,b)=>a-b).slice(0,4);
@@ -791,7 +791,7 @@ function submitOrder(){
   sendLock=true;setTimeout(()=>sendLock=false,600);
   const snap=items.map(i=>({n:i.n,p:i.p,q:i.q})),tot=cartTotal(),w=waiter;
   askPay(tot,pay=>{
-    const o={id:DEV+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),w,items:snap,total:tot,ts:Date.now(),st:'queued',num:null,pay,paid:!!pay,g:snap.map(()=>0)};
+    const o={id:DEV+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),w,items:snap,total:tot,ts:Date.now(),st:'queued',num:null,pay,paid:true,g:snap.map(()=>0)};
     cart={};updateCart();                      // carrito limpio al instante
     orders.push(o);byId.set(o.id,o);transmit(o);DB.put(o);
     buzz([30,30,60]);
@@ -855,7 +855,7 @@ function barHistory(filter='act'){
   const rows=list.map(o=>{const s=stl(o),fin=!isActive(o);
     return `<div class="oc ${fin?'fin':''}" data-o="${o.id}"><div class="och"><span class="n">${o.num!=null?'#'+pad(o.num):'···'}</span><span class="s ${s[1]}" style="font-size:12px;font-weight:700;letter-spacing:.08em">${s[0]}</span><span class="tt">${eur(o.total)}</span></div>
       ${o.items.map((it,i)=>{const g=givenOf(o,i);return `<div class="gl ${g>=it.q?'all':''}"><span class="gn">${esc(it.n)}${it.q>1?` <small style="color:var(--mut)">${g}/${it.q}</small>`:''}</span><span class="chips">${Array.from({length:it.q},(_,k)=>`<button class="chip ${k<g?'on':''}" data-i="${i}" data-k="${k}">✓</button>`).join('')}</span></div>`}).join('')}
-      <div class="ofoot">${o.paid?`<span>${PAYS[o.pay][1]} ${PAYS[o.pay][0]}</span>`:`<button class="btn pri" data-cobrar>Cobrar ${eur(o.total)}</button>`}<span style="flex:1"></span>${fullyGiven(o)?'':'<button class="btn" data-all>Todo entregado</button>'}</div></div>`}).join('');
+      <div class="ofoot">${o.paid?`<span>${PAYS[o.pay]?PAYS[o.pay][1]+' '+PAYS[o.pay][0]:''}</span>`:o.paid===undefined?'<span></span>':`<button class="btn pri" data-cobrar>Cobrar ${eur(o.total)}</button>`}<span style="flex:1"></span>${fullyGiven(o)?'':'<button class="btn" data-all>Todo entregado</button>'}</div></div>`}).join('');
   const m=modal(`<h2>Mis pedidos</h2><div class="seg" style="margin-bottom:6px"><button class="${filter==='act'?'sel':''}" data-f="act">Activos</button><button class="${filter==='all'?'sel':''}" data-f="all">Todos</button></div>
     ${rows||`<p class="hint">${filter==='act'?'No tienes pedidos activos.':'Todavía no hay pedidos.'}</p>`}`,'wide');
   m.dataset.hist='1';
@@ -866,7 +866,7 @@ function barHistory(filter='act'){
     o.g[i]=o.g[i]>k?k:k+1;DB.put(o);buzz(15);redo();
   });
   $$('[data-all]',m).forEach(b=>b.onclick=()=>{const o=byId.get(b.closest('.oc').dataset.o);o.g=o.items.map(i=>i.q);DB.put(o);buzz(25);redo()});
-  $$('[data-cobrar]',m).forEach(b=>b.onclick=()=>{const o=byId.get(b.closest('.oc').dataset.o);askPay(o.total,p=>{o.pay=p;o.paid=!!p;DB.put(o);barHistory(filter)},{later:false})});
+  $$('[data-cobrar]',m).forEach(b=>b.onclick=()=>{const o=byId.get(b.closest('.oc').dataset.o);askPay(o.total,p=>{o.pay=p;o.paid=true;DB.put(o);barHistory(filter)})});
   return m;
 }
 async function barQR(){
