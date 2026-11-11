@@ -230,6 +230,7 @@ details{margin-top:14px}summary{color:var(--mut);font-size:13px;padding:8px 0;cu
 .gob{height:64px;background:rgba(242,163,58,.16);color:var(--amb);font-size:17px;font-weight:800;letter-spacing:.1em;border-top:1px solid rgba(242,163,58,.4)}
 .done+.done{border-top:2px solid var(--bg)}
 .cfoot{display:flex;border-top:1px solid var(--line)}.cfoot button{flex:1;height:42px;font-size:13px;font-weight:650;color:var(--mut)}.cfoot button+button{border-left:1px solid var(--line)}
+.li.bevl{font-size:20px;opacity:.55;padding-top:8px}
 .card.rush{border-color:var(--red);box-shadow:0 0 0 2px rgba(255,92,92,.5)}
 body.kitchen #toasts{top:auto;bottom:calc(env(safe-area-inset-bottom) + 14px)}
 </style>
@@ -936,13 +937,13 @@ function applyStatus(id,num,st,go,sd,deny){
     if(ch){DB.put(o);updatePill()}return}
   if(st==='void'){o.st='void';o.vp=false;DB.put(o);updatePill();toast(`Cocina ha anulado el pedido #${pad(o.num||0)}`,{kind:'bad',ms:6000});buzz([100,60,100]);return}
   const ns=st==='done'?'done':'acked';
-  const g2=go||null;if((o.go||null)!==g2){if(g2&&!o.go){toast(`🔥 #${pad(o.num||0)} marchando`,{kind:'ok',ms:2200});buzz(40)}o.go=g2;ch=true}
+  const g2=go||null;if((o.go||null)!==g2){if(g2&&!o.go&&!o.items.every(i=>i.k==='b')){toast(`🔥 #${pad(o.num||0)} marchando`,{kind:'ok',ms:2200});buzz(40)}o.go=g2;ch=true}
   if(sd&&JSON.stringify(sd)!==JSON.stringify(o.sd||{})){
     const nw=Object.keys(sd).filter(k=>!(o.sd&&o.sd[k]));o.sd=sd;ch=true;
     const st0=[...new Set(o.items.map(i=>i.k||'c'))];
     if(nw.length&&ns!=='done'&&st0.length>1)toast(`✔ #${pad(o.num||0)}: ${nw.map(k=>KLAB[k]).join(' y ')} listo · falta ${st0.filter(k=>!sd[k]).map(k=>KLAB[k]).join(' y ')}`,{kind:'ok',ms:5000});
   }
-  if(o.st!==ns){const was=o.st;o.st=ns;ch=true;if(ns==='done'&&was!=='done'){chimeReady();toast(`✔ Pedido #${pad(o.num||0)} LISTO${o.tb?' · '+esc(o.tb):''} · ${o.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}`,{kind:'ok',ms:5000})}}
+  if(o.st!==ns){const was=o.st;o.st=ns;ch=true;if(ns==='done'&&was!=='done'&&!o.items.every(i=>i.k==='b')){chimeReady();toast(`✔ Pedido #${pad(o.num||0)} LISTO${o.tb?' · '+esc(o.tb):''} · ${o.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}`,{kind:'ok',ms:5000})}}
   if(ch){DB.put(o);updatePill()}
 }
 let kTot=null;
@@ -1124,7 +1125,7 @@ async function startKitchen(){
   $('#app').innerHTML=`
   <header class="kh"><div class="brand"><b>${BRAND}</b><small>COCINA</small></div><div class="cnt" id="cnt">0 PENDIENTES</div>
     <button class="pill off" id="pill"></button>
-    <div class="kv" id="kv"><button data-v="all">Todo</button><button data-v="c">Cocina</button><button data-v="b">Barra</button></div>
+    <div class="kv" id="kv"><button data-v="c">Solo cocina</button><button data-v="all">Todo</button></div>
     <button class="cnt tot" id="bTot">💰 0,00 €</button><div class="sp"></div>
     <button class="ico emo" id="bMsg" aria-label="Avisar a camareros">📢</button>
     <button class="ico emo" id="bSold" aria-label="Agotados">🚫</button>
@@ -1147,10 +1148,11 @@ async function startKitchen(){
   keepAwake();
   toast('Toca cualquier botón una vez para activar el sonido',{kind:'warn',ms:4000});
 }
-let kview=store.get('zmb.kview','all');
-const stOf=o=>{const s=[...new Set((o.items||[]).map(i=>i.k||'c'))];return s.length?s:['c']};
+let kview=store.get('zmb.kview','c');if(kview!=='all')kview='c';
+const stOf=o=>['c'];                      // cocina solo gestiona lo suyo; las bebidas las sirve y marca el camarero
+const hasKit=o=>(o.items||[]).some(i=>(i.k||'c')!=='b');
 const pendSt=o=>stOf(o).filter(s=>!(o.sd&&o.sd[s]));
-const visibleIn=o=>o.st==='new'&&(kview==='all'?pendSt(o).length>0:pendSt(o).includes(kview));
+const visibleIn=o=>o.st==='new'&&pendSt(o).length>0;
 const stat=o=>[o.id,o.num,o.st,o.go||null,o.sd||{}];
 function kTotals(){let c=0,n=0;orders.forEach(o=>{if(o.st==='void'||!o.items||!o.items.length)return;c+=cents(o.total||0)+cents(o.d||0);n++});return{c,n}}
 const kScore=()=>({...kTotals(),src:'todas las barras'});
@@ -1181,19 +1183,21 @@ function kHandle(m,reply){
 function ingest(o,dev){
   let r=byId.get(o.id);if(r)return r;
   r={id:o.id,num:nextNum++,w:o.w,items:o.items,total:o.total,d:o.d||0,tb:o.tb||'',dev:dev||'',ts:o.ts,rcv:Date.now(),st:'new',go:null,sd:{}};
+  if(!hasKit(r)){r.st='done';r.doneAt=Date.now();r.go=r.doneAt;r.sd={c:r.doneAt};orders.push(r);byId.set(r.id,r);DB.put(r);kChip();return r} // solo bebidas: las sirve el camarero
   orders.push(r);byId.set(r.id,r);DB.put(r);renderKitchen(r.id);ringNew();return r;
 }
 function cardEl(o,fresh){
-  const sts=stOf(o),multi=sts.length>1;
-  const groups=sts.filter(s=>!(o.sd&&o.sd[s])&&(kview==='all'||kview===s)).map(s=>({s,items:o.items.filter(i=>(i.k||'c')===s)}));
+  const kit=o.items.filter(i=>(i.k||'c')!=='b'),bev=o.items.filter(i=>(i.k||'c')==='b');
+  const li=i=>`<li><b>${i.q}×</b> ${esc(i.n)}${i.x?`<span class="nt">✎ ${esc(i.x)}</span>`:''}</li>`;
   const c=document.createElement('article');c.className='card'+(fresh?' fresh':'')+(o.rush?' rush':'');c.dataset.id=o.id;c.dataset.num=o.num;c.dataset.rcv=o.rcv;
   c.dataset.sig=`${o.go||0}|${JSON.stringify(o.sd||{})}|${o.rush?1:0}|${kview}`;
   c.style.setProperty('--wc',wColor(o.w));
   c.innerHTML=`<div class="ch"><div class="num">#${pad(o.num)}</div><div class="chr"><div class="wtag">${esc(wLabel(o.w))}</div><div class="tm">00:00</div></div></div>
     ${(o.tb||o.rush||o.go)?`<div class="ctags">${o.tb?`<span class="ctb">${esc(o.tb)}</span>`:''}${o.rush?'<span class="crush">⚡ PRISA</span>':''}${o.go?'<span class="cgo">🔥 MARCHANDO</span>':''}</div>`:''}
-    ${groups.map(g=>`${multi?`<div class="grp">${KLAB[g.s]}</div>`:''}<ul class="li">${g.items.map(i=>`<li><b>${i.q}×</b> ${esc(i.n)}${i.x?`<span class="nt">✎ ${esc(i.x)}</span>`:''}</li>`).join('')}</ul>`).join('')}
+    <ul class="li">${kit.map(li).join('')}</ul>
+    ${kview==='all'&&bev.length?`<div class="grp">BEBIDAS · LAS SIRVE EL CAMARERO</div><ul class="li bevl">${bev.map(li).join('')}</ul>`:''}
     ${o.go?'':'<button class="gob" data-go>▶ EMPEZAR · MARCHANDO</button>'}
-    ${groups.map(g=>`<button class="done" data-s="${g.s}">${multi?'LISTO '+KLAB[g.s]:'LISTO / ENTREGADO'}</button>`).join('')}
+    <button class="done" data-s="c">LISTO / ENTREGADO</button>
     <div class="cfoot"><button data-av>📢 Avisar</button><button data-an>✕ Anular</button></div>`;
   $$('.done',c).forEach(b=>b.onclick=()=>markStation(o.id,b.dataset.s));
   const g=$('[data-go]',c);if(g)g.onclick=()=>startOrder(o.id);

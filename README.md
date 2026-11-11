@@ -15,7 +15,7 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v13` → `zmb-v14`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v14` → `zmb-v15`).
 
 ## Cuentas y panel de administración
 
@@ -35,7 +35,7 @@ Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v13` 
 
 - **Marchando**: cocina pulsa *Empezar* y el camarero ve "🔥 marchando" en su móvil; después *Listo*.
 - **Notas por producto** (✎ en cada producto: sin hielo, sin sal… o texto libre) y **mesa/nombre** del pedido.
-- **Estaciones**: cada categoría va a COCINA o a BARRA (se elige en `/admin`). La tablet puede ver *Todo / Cocina / Barra*; un pedido mixto se completa cuando ambas partes están listas.
+- **Cocina y barra**: cada categoría la prepara la cocina o la sirve el camarero (se elige en `/admin`). La tablet muestra *Solo cocina* o *Todo*; las bebidas las sirve y tacha el camarero en su móvil, y un pedido solo de bebidas no pasa por cocina.
 - **Agotados en vivo**: cocina marca lo que se acabó y desaparece de todas las barras conectadas.
 - **Anular / Editar** un pedido (mientras cocina no lo haya empezado) y **⚡ Prisa** desde "Mis pedidos".
 - **Avisos** de cocina a camareros (📢), a todos o a uno.
