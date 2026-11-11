@@ -208,6 +208,33 @@ details{margin-top:14px}summary{color:var(--mut);font-size:13px;padding:8px 0;cu
 /* ---- v2: notas, estados, estaciones, avisos, marcador ---- */
 .prod .note{position:absolute;right:58px;bottom:8px;width:44px;height:40px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid var(--line2);display:none;align-items:center;justify-content:center;font-size:18px;color:var(--gold)}
 .has .note{display:flex}
+
+/* ---- barra v3: total grande + cuadrícula única de 3 columnas ---- */
+.grid{grid-template-columns:repeat(3,1fr);gap:9px;padding:6px 12px calc(112px + env(safe-area-inset-bottom))}
+@media(min-width:720px){.grid{grid-template-columns:repeat(4,1fr)}}
+.top .row1{gap:8px}.top .row1 .brand{display:none}
+.top .row1 .pill{margin-left:0}
+.wtag{flex:1;min-width:0;height:40px;border-radius:12px;background:var(--s2);border:1px solid var(--line);padding:0 12px;text-align:left;font-size:14px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtag small{display:none}
+.prod.has{padding:20px 8px 38px}
+.prod.has .pn{font-size:14.5px}
+.hbtn{position:relative}.hbadge{position:absolute;top:-5px;right:-5px;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#d6452f;color:#fff;font-size:12px;font-weight:700;display:none;align-items:center;justify-content:center}
+.totbox{display:flex;align-items:flex-end;gap:10px;padding:10px 16px 4px}
+.totbox .hintline{flex:1;min-width:0;font-size:14px;color:var(--mut);font-style:italic;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;padding-bottom:12px}
+.totbox .big{font-size:60px;font-weight:300;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--tx)}
+.totbox .big small{font-size:24px;color:var(--mut);margin-left:4px;font-weight:400}
+.prod{min-height:92px;border-radius:16px;padding:10px 8px;align-items:center;justify-content:center;text-align:center;background:#141311;background:color-mix(in srgb,var(--c) 17%,#12110f);border:1px solid #2a2724;border:1px solid color-mix(in srgb,var(--c) 32%,#1c1a18)}
+.prod::before{display:none}
+.prod .pn{font-size:15.5px;font-weight:600;padding-right:0;line-height:1.15;word-break:break-word;hyphens:auto}
+.prod .pp{font-size:13px;margin-top:4px}
+.prod.has{background:color-mix(in srgb,var(--c) 30%,#12110f);border-color:var(--c);box-shadow:inset 0 0 0 1.5px var(--c)}
+.badge{top:6px;right:6px;min-width:26px;height:26px;padding:0 8px;font-size:14px;background:var(--c);color:#14120d}
+.minus,.prod .note{width:34px;height:30px;bottom:5px;border-radius:10px;font-size:19px}
+.minus{right:5px}.prod .note{right:auto;left:5px;font-size:15px}
+.dock{display:flex;gap:10px;align-items:stretch;padding:22px 12px calc(12px + env(safe-area-inset-bottom))}
+.dkb{flex:0 0 58px;height:64px;border-radius:20px;background:var(--s3);border:1px solid var(--line2);font-size:17px;font-weight:600;display:grid;place-items:center;color:var(--tx)}
+.dkb:active{transform:scale(.95)}
+.dock .send{flex:1;width:auto;height:64px;border-radius:32px;font-size:21px;letter-spacing:.01em}
 .prod.sold{opacity:.38;filter:grayscale(.8)}.prod.sold .pp{color:var(--red);font-weight:700;letter-spacing:.08em;font-size:13px}
 .nchips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
 .nchip{min-height:44px;padding:0 14px;border-radius:12px;background:var(--s2);border:1px solid var(--line2);font-weight:600;font-size:15px}
@@ -806,21 +833,23 @@ async function startBar(){
   {const S0=getSess();if(S0&&!waiter){waiter=S0.name.slice(0,14);store.set('zmb.w',waiter)}}
   $('#app').innerHTML=`
   <header class="top">
-    <div class="row1"><div class="brand"><b>${BRAND}</b><small>BARRA</small></div>
-      <button class="pill off" id="pill"></button><button class="ico" id="btnMenu" aria-label="Menú">${ICON.menu}</button></div>
-    <div class="waiters" id="waiters"></div>
+    <div class="row1"><button class="ico" id="btnMenu" aria-label="Menú">${ICON.menu}</button>
+      <div id="waiters" style="flex:1;min-width:0;display:flex"></div>
+      <button class="pill off" id="pill"></button><button class="ico hbtn" id="btnHist" aria-label="Mis pedidos">${ICON.receipt}<span class="hbadge" id="hbadge"></span></button></div>
   </header>
-  <nav class="cats" id="cats"></nav>
+  <div class="totbox"><div class="hintline" id="sumtxt"></div><div class="big" id="bigtot"></div></div>
   <main class="grid" id="grid"></main>
-  <div class="dock"><div class="sum"><div class="txt" id="sumtxt"></div><button id="clr">VACIAR</button></div>
+  <div class="dock"><button class="dkb" id="del" aria-label="Quitar último">⌫</button><button class="dkb" id="clr">AC</button>
     <button class="send" id="send"></button></div>`;
-  renderWaiters();renderCats();renderGrid();updateCart();updatePill();
+  renderWaiters();renderGrid();updateCart();updatePill();updHist();
   $('#btnMenu').onclick=barMenu;$('#pill').onclick=barPairing;
-  $('#clr').onclick=()=>{cart={};updateCart();buzz(20)};$('#sumtxt').onclick=openCart;
+  $('#clr').onclick=()=>{cart={};updateCart();buzz(20)};$('#sumtxt').onclick=openCart;$('#bigtot').onclick=openCart;
+  $('#del').onclick=()=>{const ks=Object.keys(cart);if(!ks.length)return;const k=ks[ks.length-1];cart[k]--;if(cart[k]<=0)delete cart[k];updateCart(kName(k));buzz(12)};
+  $('#btnHist').onclick=barHistory;
   $('#send').onclick=submitOrder;
   Net.init(bHandle);
   const ping=()=>{Net.send({t:'ping',dev:DEV,w:waiter,open:outstanding().slice(-300).map(o=>o.id)});checkAlive()};
-  setInterval(ping,3000);setInterval(()=>{checkAlive();updatePill()},1000);ping();Net.onWsOpen=ping;
+  setInterval(ping,3000);setInterval(()=>{checkAlive();updatePill();updHist()},1000);ping();Net.onWsOpen=ping;
   keepAwake();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>{if(!barAlive())toast('Sin conexión con cocina',{kind:'warn',ms:7000,action:['RECONECTAR',barPairing]})},3500)});
   syncMenu();setInterval(syncMenu,120000);addEventListener('online',syncMenu);
@@ -833,7 +862,7 @@ async function syncHub(){
     if(c.goal!=null)store.set('zmb.goal',Number(c.goal)||0);if(c.event!=null)store.set('zmb.event',c.event||'');
     if(Array.isArray(c.menu)&&c.menu.length&&JSON.stringify(c.menu)!==JSON.stringify(MENU)){
       MENU=c.menu;store.set('zmb.menu',MENU);if(curCat>=MENU.length)curCat=0;
-      if($('#cats')){renderCats();renderGrid();updateCart();toast('Carta actualizada',{kind:'ok',ms:1600})}
+      if($('#grid')){renderGrid();updateCart();toast('Carta actualizada',{kind:'ok',ms:1600})}
     }
   }catch{}
 }
@@ -849,7 +878,7 @@ async function syncMenu(){
     rows.forEach(r=>{let c=idx.get(r.category);if(!c){c={name:r.category,items:[]};idx.set(r.category,c);m.push(c)}c.items.push({n:r.name,p:Number(r.price),k:r.station==='barra'?'b':'c'})});
     if(JSON.stringify(m)!==JSON.stringify(MENU)){
       MENU=m;store.set('zmb.menu',m);if(curCat>=MENU.length)curCat=0;
-      if($('#cats')){renderCats();renderGrid();updateCart();toast('Carta actualizada',{kind:'ok',ms:1600})}
+      if($('#grid')){renderGrid();updateCart();toast('Carta actualizada',{kind:'ok',ms:1600})}
     }
   }catch{}
 }
@@ -873,12 +902,8 @@ async function syncCloud(){
 }
 function renderWaiters(){
   const box=$('#waiters');if(!box)return;
-  const nums=Array.from({length:12},(_,i)=>String(i+1));
-  const list=(waiter&&!nums.includes(waiter))?[waiter,...nums]:nums;
-  box.innerHTML=`<div class="lbl">CAMA-<br>RERO</div>`+list.map(w=>`<button class="wchip ${w===waiter?'sel':''}" data-w="${esc(w)}">${esc(w)}</button>`).join('')+`<button class="wchip kb" data-kb>${ICON.kb}</button>`;
-  $$('[data-w]',box).forEach(b=>b.onclick=()=>{setWaiter(b.dataset.w)});
+  box.innerHTML=`<button class="wtag" data-kb><small>CAMARERO</small>${esc(waiter||'Elige…')}</button>`;
   $('[data-kb]',box).onclick=openPad;
-  const s=$('.sel',box);if(s)s.scrollIntoView({inline:'center',block:'nearest'});
 }
 function setWaiter(w){waiter=w;store.set('zmb.w',w);renderWaiters();buzz(15)}
 function openPad(){
@@ -900,8 +925,7 @@ function renderCats(){
   $$('.cat',box).forEach(b=>b.onclick=()=>{curCat=+b.dataset.i;renderCats();renderGrid();updateCart();buzz(8)});
 }
 function renderGrid(){
-  const c=MENU[curCat]||MENU[0];
-  $('#grid').innerHTML=c.items.map(i=>`<button class="prod ${SOLD.has(i.n)?'sold':''}" data-n="${esc(i.n)}" style="--c:${catColor(curCat)}"><span class="pn">${esc(i.n)}</span><span class="pp">${SOLD.has(i.n)?'AGOTADO':eur(i.p)}</span><span class="badge">+0</span><span class="note" data-nt aria-label="Nota">✎</span><span class="minus" data-m>−</span></button>`).join('');
+  $('#grid').innerHTML=MENU.map((c,ci)=>c.items.map(i=>`<button class="prod ${SOLD.has(i.n)?'sold':''}" data-n="${esc(i.n)}" style="--c:${catColor(ci)}"><span class="pn">${esc(i.n)}</span><span class="pp">${SOLD.has(i.n)?'AGOTADO':eur(i.p)}</span><span class="badge">+0</span><span class="note" data-nt aria-label="Nota">✎</span><span class="minus" data-m>−</span></button>`).join('')).join('');
   $$('.prod').forEach(b=>{
     b.onclick=e=>{
       const n=b.dataset.n;
@@ -915,6 +939,7 @@ function renderGrid(){
     };
   });
 }
+function updHist(){const b=$('#hbadge');if(!b)return;const n=outstanding().length;b.textContent=n;b.style.display=n?'flex':'none'}
 function updateCart(bumpName,bump){
   $$('.prod').forEach(b=>{
     const q=qtyOf(b.dataset.n);b.classList.toggle('has',q>0);
@@ -923,9 +948,10 @@ function updateCart(bumpName,bump){
   });
   const items=cartItems(),tot=cartTotal(),s=$('#send');
   s.disabled=!items.length;
-  s.textContent=items.length?`ENVIAR A COCINA (${eur(tot)})`:'Toca productos para empezar';
-  $('#sumtxt').textContent=items.map(lineTxt).join(' · ');
-  $('#clr').style.display=items.length?'':'none';
+  s.textContent='Cobrar';
+  $('#sumtxt').textContent=items.length?items.map(lineTxt).join(' · '):'Toca los productos para sumar';
+  {const t=tot.toFixed(2).replace('.',',');$('#bigtot').innerHTML=t+'<small>€</small>'}
+  $('#clr').disabled=$('#del').disabled=!items.length;
   store.set('zmb.cart',cart);
 }
 const NOTES=['Sin hielo','Con hielo','Sin sal','Sin picante','Poco hecho','Muy hecho','Para llevar','Sin gluten','Sin lactosa'];
