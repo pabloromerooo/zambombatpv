@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Comandas">
+<title>Zambomba · Comandas</title>
+<style>
+:root{--bg:#000;--s1:#0d0f12;--s2:#171b21;--s3:#232a33;--line:#2a313b;--tx:#f2f5f8;--mut:#8b96a5;
+--lime:#b4ff2e;--amb:#ffb21e;--org:#ff7a1a;--red:#ff4545;--cy:#2ee6ff;--pk:#ff4fd8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overscroll-behavior:none}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+button{font:inherit;color:inherit;border:0;background:none;touch-action:manipulation;cursor:pointer;padding:0}
+textarea,input{-webkit-user-select:text;user-select:text;font:inherit;color:var(--tx)}
+h2{margin:0 0 10px;font-size:22px;font-weight:900}
+h3{margin:18px 0 8px;font-size:14px;color:var(--mut);letter-spacing:.1em;font-weight:800}
+.hint{color:var(--mut);font-size:14px;line-height:1.4;margin:6px 0 12px}
+.btn{min-height:50px;padding:0 18px;border-radius:14px;background:var(--s3);font-weight:800;font-size:16px;border:1.5px solid var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.lime{background:var(--lime);color:#000;border-color:var(--lime)}
+.btn.red{background:#3a1010;color:#ff8a8a;border-color:#6a2020}
+.btn.full{width:100%;margin-top:8px}
+.r{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}.r .btn{flex:1}
+
+/* ---------- selector de modo ---------- */
+.picker{min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px;max-width:640px;margin:0 auto}
+.picker h1{font-size:30px;margin:0;font-weight:900}.picker h1 span{color:var(--lime)}
+.pbtn{height:150px;border-radius:26px;background:var(--s1);border:3px solid var(--line);font-size:32px;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.pbtn small{font-size:15px;color:var(--mut);font-weight:600}
+.pbtn.b{border-color:var(--lime);color:var(--lime)}.pbtn.k{border-color:var(--amb);color:var(--amb)}
+.pbtn:active{transform:scale(.97)}
+
+/* ---------- BARRA ---------- */
+.top{position:sticky;top:0;z-index:5;background:#000;padding:calc(env(safe-area-inset-top) + 6px) 10px 6px;border-bottom:1px solid var(--line)}
+.row1{display:flex;align-items:center;gap:8px}
+.brand{font-weight:900;letter-spacing:.08em;font-size:15px}.brand span{color:var(--lime)}
+.pill{margin-left:auto;padding:9px 13px;border-radius:99px;font-weight:900;font-size:13px;border:1.5px solid;white-space:nowrap}
+.pill.ok{color:var(--lime);border-color:#4a7a10;background:#0c1700}
+.pill.off{color:var(--amb);border-color:#7a5200;background:#1a1100;animation:blink 1.6s infinite}
+.ico{width:46px;height:46px;border-radius:13px;background:var(--s2);font-size:22px;flex:0 0 auto}
+.waiters{display:flex;gap:6px;overflow-x:auto;padding:8px 0 4px;scrollbar-width:none}
+.waiters::-webkit-scrollbar{display:none}
+.waiters .lbl{flex:0 0 auto;align-self:center;font-size:10px;color:var(--mut);font-weight:900;letter-spacing:.1em;line-height:1.1;text-align:center}
+.wchip{flex:0 0 auto;min-width:50px;height:50px;border-radius:13px;background:var(--s2);border:1.5px solid var(--line);font-weight:900;font-size:21px;padding:0 12px}
+.wchip.sel{background:var(--lime);color:#000;border-color:var(--lime)}
+.wchip.kb{color:var(--cy)}
+.shake{animation:shake .4s}
+.cats{display:flex;gap:8px;padding:8px 10px;overflow-x:auto;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:1 0 auto;height:54px;padding:0 20px;border-radius:15px;background:var(--s2);font-weight:900;font-size:18px;border:2.5px solid transparent;color:var(--mut)}
+.cat.sel{border-color:var(--c);color:var(--c);background:#080a0d}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:4px 10px calc(175px + env(safe-area-inset-bottom))}
+@media(min-width:720px){.grid{grid-template-columns:repeat(3,1fr)}}
+.prod{position:relative;min-height:116px;border-radius:18px;background:var(--s1);border:2px solid var(--line);border-left:9px solid var(--c);padding:12px 12px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;text-align:left;overflow:hidden;transition:transform .07s,background .12s,border-color .12s}
+.prod:active{transform:scale(.95);background:#1b2b0b}
+.prod .pn{font-size:22px;font-weight:900;line-height:1.1;padding-right:44px}
+.prod .pp{font-size:17px;color:var(--mut);font-weight:800}
+.prod.has{border-color:var(--lime);background:#0d1905}
+.prod.flash{animation:flash .25s}
+.badge{position:absolute;top:8px;right:8px;min-width:56px;height:42px;padding:0 10px;border-radius:14px;background:var(--lime);color:#000;font-size:26px;font-weight:900;display:none;align-items:center;justify-content:center}
+.has .badge{display:flex}
+.badge.bump{animation:bump .22s}
+.minus{position:absolute;right:6px;bottom:6px;width:50px;height:46px;border-radius:13px;background:#2b1010;color:#ff7b7b;font-size:30px;font-weight:900;display:none;align-items:center;justify-content:center}
+.has .minus{display:flex}
+.fly{position:absolute;left:50%;top:40%;font-size:34px;font-weight:900;color:var(--lime);pointer-events:none;animation:fly .55s forwards}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:26px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(rgba(0,0,0,0),#000 32%);z-index:6}
+.sum{display:flex;gap:8px;align-items:center;margin-bottom:8px;min-height:34px}
+.sum .txt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px;color:var(--mut);font-weight:700}
+.sum button{padding:8px 14px;border-radius:11px;background:var(--s2);font-weight:900;font-size:13px;color:#ff8a8a}
+.send{width:100%;height:78px;border-radius:21px;background:var(--lime);color:#000;font-size:23px;font-weight:900;letter-spacing:.02em;box-shadow:0 0 30px rgba(180,255,46,.35),0 6px 0 #6c9c10;transition:transform .07s,box-shadow .07s}
+.send:active{transform:translateY(5px);box-shadow:0 0 30px rgba(180,255,46,.35),0 1px 0 #6c9c10}
+.send[disabled]{background:var(--s2);color:var(--mut);box-shadow:none;font-size:18px}
+.cajafab{position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 130px);display:none}
+
+/* ---------- COCINA ---------- */
+.kh{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;background:#000;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.kh h1{font-size:24px;margin:0;font-weight:900;letter-spacing:.08em}.kh h1 span{color:var(--amb)}
+.kh .cnt{font-size:22px;font-weight:900;color:var(--lime);background:#0c1700;border:2px solid #3a6a0a;border-radius:14px;padding:6px 14px}
+.kh .sp{flex:1}
+.kh .ico{width:54px;height:54px}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;padding:14px;align-items:start}
+.card{background:var(--s1);border:5px solid #2e3844;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;animation:cin .4s cubic-bezier(.2,1.3,.4,1);transition:opacity .28s,transform .28s}
+.card.out{opacity:0;transform:scale(.8) translateY(-14px);pointer-events:none}
+.card.warn{border-color:var(--amb)}
+.card.crit{border-color:var(--red);animation:pulse 1s infinite}
+.card.fresh{box-shadow:0 0 0 5px var(--lime),0 0 40px rgba(180,255,46,.5)}
+.ch{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:2px solid var(--line)}
+.num{font-size:64px;font-weight:900;line-height:1;letter-spacing:-.03em}
+.chr{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.wtag{font-size:20px;font-weight:900;padding:6px 12px;border-radius:11px;background:var(--wc);color:#000;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm{font-size:32px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1}
+.warn .tm{color:var(--amb)}.crit .tm{color:var(--red)}
+.li{list-style:none;margin:0;padding:14px 16px;font-size:32px;font-weight:900;line-height:1.15;display:flex;flex-direction:column;gap:8px}
+.li b{color:var(--lime);display:inline-block;min-width:2.3ch}
+.done{height:92px;background:var(--lime);color:#000;font-size:28px;font-weight:900;letter-spacing:.03em;border-top:3px solid #000}
+.done:active{background:#8fd11f}
+.empty{grid-column:1/-1;text-align:center;color:var(--mut);padding:80px 10px;font-size:28px;font-weight:800}
+.empty b{display:block;font-size:64px;color:var(--lime)}
+
+/* ---------- modales / toasts ---------- */
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--s1);border:1.5px solid var(--line);border-radius:24px 24px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:up .25s}
+.sheet.wide{max-width:680px}
+@media(min-width:720px){.ovl{align-items:center}.sheet{border-radius:24px}}
+.sheet>.x{position:absolute;right:10px;top:10px;width:44px;height:44px;border-radius:12px;background:var(--s2);font-size:18px}
+.sheet h2{padding-right:50px}
+.mrow{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:0 16px;border-radius:15px;background:var(--s2);margin-bottom:8px;font-size:18px;font-weight:800;text-align:left}
+.mrow i{font-style:normal;font-size:24px;width:30px;text-align:center}
+.mrow.red{color:#ff8a8a}
+textarea.code{width:100%;background:#000;border:1.5px solid var(--line);border-radius:12px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;resize:none;word-break:break-all}
+label{display:block;font-size:12px;font-weight:900;letter-spacing:.08em;color:var(--mut);margin:10px 0 4px}
+.slot{border:1.5px solid var(--line);border-radius:16px;padding:12px;margin:10px 0;background:#08090b}
+.slt{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px}.st{color:var(--amb);font-size:13px;font-weight:800}.st.ok{color:var(--lime)}.st.bad{color:var(--red)}
+.rep{background:#000;border:1.5px solid var(--line);border-radius:12px;padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.45;overflow:auto;max-height:50vh;white-space:pre;-webkit-user-select:text;user-select:text}
+.wv{width:100%;height:64px;border-radius:14px;background:#000;border:2px solid var(--lime);text-align:center;font-size:32px;font-weight:900;margin-bottom:10px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad button{height:68px;border-radius:15px;background:var(--s3);font-size:28px;font-weight:900}
+.pad .okk{background:var(--lime);color:#000}.pad .alt{color:#ff8a8a}
+.hrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.hrow .n{font-weight:900;font-size:20px;min-width:62px}.hrow .d{flex:1;font-size:14px;color:var(--mut)}.hrow .s{font-size:13px;font-weight:900;white-space:nowrap}
+.s.q{color:var(--amb)}.s.k{color:var(--cy)}.s.d{color:var(--lime)}
+#toasts{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 8px);z-index:99;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.toast{pointer-events:none;display:flex;align-items:center;gap:12px;background:#10151b;border:2px solid var(--line);border-radius:16px;padding:12px 16px;font-size:17px;font-weight:800;max-width:94%;animation:down .25s;box-shadow:0 8px 30px rgba(0,0,0,.8)}
+.toast.ok{border-color:var(--lime);color:var(--lime)}.toast.warn{border-color:var(--amb);color:var(--amb)}.toast.bad{border-color:var(--red);color:var(--red)}
+.toast button{pointer-events:auto;background:var(--s3);border-radius:10px;padding:8px 12px;font-weight:900;color:var(--tx)}
+.toast.x{opacity:0;transform:translateY(-10px);transition:.3s}
+
+@keyframes blink{50%{opacity:.55}}
+@keyframes bump{40%{transform:scale(1.35)}}
+@keyframes flash{0%{background:#4a8a10}100%{}}
+@keyframes fly{to{transform:translateY(-60px);opacity:0}}
+@keyframes cin{from{transform:translateY(-30px) scale(.9);opacity:0}}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(255,69,69,.55)}}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+@keyframes down{from{transform:translateY(-20px);opacity:0}}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+</style>
+</head>
+<body>
+<noscript>Esta aplicación necesita JavaScript.</noscript>
+<div id="app"></div>
+<div id="toasts"></div>
+
+<script>
+(()=>{
+'use strict';
+
+/* =====================================================================
+   UTILIDADES
+   ===================================================================== */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const EUR=new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'});
+const eur=n=>EUR.format(n);
+const cents=n=>Math.round(n*100);
+const pad=(n,l=3)=>String(n).padStart(l,'0');
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch{return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+};
+const fmtDT=ts=>new Date(ts).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const stamp=()=>{const d=new Date(),p=n=>pad(n,2);return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`};
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch{}};
+
+const hashRole=location.hash.replace('#','');
+const ROLE=['barra','cocina'].includes(hashRole)?hashRole:(['barra','cocina'].includes(store.get('zmb.role'))?store.get('zmb.role'):'');
+const DEV=store.get('zmb.dev')||(()=>{const d=Math.random().toString(36).slice(2,6);store.set('zmb.dev',d);return d})();
+const ALIVE_MS=9000;
+
+/* ---------- toasts ---------- */
+function toast(html,o={}){
+  const t=document.createElement('div');t.className='toast '+(o.kind||'');
+  t.innerHTML=`<span>${html}</span>`;
+  if(o.action){const b=document.createElement('button');b.textContent=o.action[0];b.onclick=()=>{o.action[1]();t.remove()};t.append(b)}
+  $('#toasts').append(t);
+  setTimeout(()=>{t.classList.add('x');setTimeout(()=>t.remove(),320)},o.ms||2200);
+}
+
+/* ---------- modal ---------- */
+function modal(html,cls=''){
+  const o=document.createElement('div');o.className='ovl';
+  o.innerHTML=`<div class="sheet ${cls}"><button class="x" aria-label="Cerrar">✕</button>${html}</div>`;
+  document.body.append(o);
+  o.close=()=>{o.remove();o.onclose&&o.onclose()};
+  $('.x',o).onclick=o.close;
+  o.addEventListener('click',e=>{if(e.target===o)o.close()});
+  return o;
+}
+function confirmBox(msg,yesLabel,onYes){
+  const m=modal(`<h2>¿Seguro?</h2><p class="hint" style="font-size:16px">${msg}</p><div class="r"><button class="btn" data-n>Cancelar</button><button class="btn red" data-y>${yesLabel}</button></div>`);
+  $('[data-n]',m).onclick=m.close;$('[data-y]',m).onclick=()=>{m.close();onYes()};
+}
+
+/* ---------- audio (aviso metálico) ---------- */
+let actx=null,soundOn=store.get('zmb.sound',true);
+function audio(){
+  if(!actx){try{actx=new(window.AudioContext||window.webkitAudioContext)()}catch{}}
+  if(actx&&actx.state==='suspended')actx.resume().catch(()=>{});
+  return actx;
+}
+addEventListener('pointerdown',audio,{passive:true});
+function tone(f,t0,dur,type,vol){
+  const c=audio();if(!c)return;const T=c.currentTime+t0;
+  const o=c.createOscillator(),g=c.createGain(),hp=c.createBiquadFilter();
+  hp.type='highpass';hp.frequency.value=600;o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(.0001,T);g.gain.exponentialRampToValueAtTime(vol,T+.006);g.gain.exponentialRampToValueAtTime(.0001,T+dur);
+  o.connect(hp);hp.connect(g);g.connect(c.destination);o.start(T);o.stop(T+dur+.03);
+}
+function ringNew(){ // pitido metálico: dos golpes + parcial inarmónico
+  if(!soundOn)return;
+  tone(1760,0,.14,'square',.22);tone(2790,0,.1,'square',.08);
+  tone(1318,.15,.14,'square',.22);tone(2100,.15,.1,'square',.08);
+  tone(1760,.3,.34,'triangle',.3);
+  buzz([140,60,140]);
+}
+function chimeReady(){tone(988,0,.12,'sine',.3);tone(1480,.12,.22,'sine',.3);buzz([90,50,90])}
+
+/* ---------- pantalla encendida ---------- */
+async function keepAwake(){try{await navigator.wakeLock.request('screen')}catch{}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')keepAwake()});
+
+/* =====================================================================
+   BASE DE DATOS LOCAL (IndexedDB, con reserva en localStorage)
+   ===================================================================== */
+const DB=(()=>{
+  const NAME='zmb-'+ROLE;let db=null,ls=false;const mem=new Map();
+  return{
+    init(){return new Promise(res=>{
+      try{
+        const r=indexedDB.open(NAME,1);
+        r.onupgradeneeded=()=>r.result.createObjectStore('o',{keyPath:'id'});
+        r.onsuccess=()=>{db=r.result;res()};
+        r.onerror=r.onblocked=()=>{ls=true;res()};
+      }catch{ls=true;res()}
+    }).then(()=>{if(ls)store.get(NAME,[]).forEach(o=>mem.set(o.id,o))})},
+    all(){return new Promise(res=>{
+      if(ls)return res([...mem.values()]);
+      const q=db.transaction('o').objectStore('o').getAll();q.onsuccess=()=>res(q.result);q.onerror=()=>res([]);
+    })},
+    put(o){return new Promise(res=>{
+      if(ls){mem.set(o.id,o);store.set(NAME,[...mem.values()]);return res()}
+      try{const t=db.transaction('o','readwrite');t.objectStore('o').put(o);t.oncomplete=()=>res();t.onerror=()=>res()}catch{res()}
+    })},
+    clear(){return new Promise(res=>{
+      if(ls){mem.clear();store.set(NAME,[]);return res()}
+      const t=db.transaction('o','readwrite');t.objectStore('o').clear();t.oncomplete=()=>res();t.onerror=()=>res();
+    })}
+  };
+})();
+
+/* =====================================================================
+   RED LOCAL: WebRTC DataChannels (Wi-Fi sin internet) + BroadcastChannel
+   El "emparejamiento" se hace una vez con dos códigos de texto
+   (no hay servidor de señalización). Después todo va por la LAN.
+   ===================================================================== */
+const b64=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s)};
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function pipe(u8,S,fmt){const s=new S(fmt);const w=s.writable.getWriter();w.write(u8).catch(()=>{});w.close().catch(()=>{});return new Uint8Array(await new Response(s.readable).arrayBuffer())}
+async function encDesc(d){
+  const u8=new TextEncoder().encode(JSON.stringify({type:d.type,sdp:d.sdp}));
+  return window.CompressionStream?'Z'+b64(await pipe(u8,CompressionStream,'deflate-raw')):'R'+b64(u8);
+}
+async function decDesc(code){
+  try{
+    code=code.replace(/\s+/g,'');if(!code)throw 0;
+    let u8=unb64(code.slice(1));
+    if(code[0]==='Z'){if(!window.DecompressionStream)throw new Error('Navegador demasiado antiguo para leer el código');u8=await pipe(u8,DecompressionStream,'deflate-raw')}
+    else if(code[0]!=='R')throw 0;
+    return JSON.parse(new TextDecoder().decode(u8));
+  }catch(e){throw new Error(e&&e.message?e.message:'Código no válido o incompleto')}
+}
+const waitIce=(pc,ms=2500)=>new Promise(res=>{
+  if(pc.iceGatheringState==='complete')return res();
+  const fin=()=>{clearTimeout(t);pc.removeEventListener('icegatheringstatechange',chk);res()};
+  const chk=()=>{if(pc.iceGatheringState==='complete')fin()};
+  const t=setTimeout(fin,ms);pc.addEventListener('icegatheringstatechange',chk);
+});
+async function copyText(txt,ta){
+  try{await navigator.clipboard.writeText(txt);toast('Copiado ✔',{kind:'ok'});return}catch{}
+  try{ta.select();document.execCommand('copy');toast('Copiado ✔',{kind:'ok'})}catch{toast('Mantén pulsado para copiar',{kind:'warn'})}
+}
+async function shareText(txt){
+  if(navigator.share){try{await navigator.share({text:txt})}catch{}}
+  else toast('Usa Copiar y pégalo donde quieras',{kind:'warn'});
+}
+async function pasteInto(ta){
+  try{ta.value=await navigator.clipboard.readText()}catch{toast('Pega manualmente (mantén pulsado)',{kind:'warn'})}
+}
+
+const Net={
+  peers:new Map(),bc:null,onMsg:null,seq:0,
+  init(onMsg){
+    this.onMsg=onMsg;
+    if('BroadcastChannel' in window){
+      try{
+        this.bc=new BroadcastChannel('zmb-v1');
+        this.bc.onmessage=e=>{const m=e.data;if(!m||m.src===ROLE)return;onMsg(m,r=>{r.src=ROLE;try{this.bc.postMessage(r)}catch{}})};
+      }catch{}
+    }
+  },
+  send(m){
+    m.src=ROLE;const s=JSON.stringify(m);
+    this.peers.forEach(p=>{if(p.dc&&p.dc.readyState==='open'){try{p.dc.send(s)}catch{}}});
+    if(this.bc){try{this.bc.postMessage(m)}catch{}}
+  },
+  mkPeer(){
+    const pc=new RTCPeerConnection({iceServers:[]}); // sin STUN: solo red local
+    const p={id:'p'+(++this.seq),pc,dc:null,onopen:null,onfail:null};
+    pc.onconnectionstatechange=()=>{
+      if(['failed','closed'].includes(pc.connectionState)){this.drop(p);p.onfail&&p.onfail()}
+    };
+    return p;
+  },
+  wire(p,dc){
+    p.dc=dc;
+    dc.onopen=()=>{p.onopen&&p.onopen()};
+    dc.onclose=()=>{this.drop(p);p.onfail&&p.onfail()};
+    dc.onmessage=e=>{
+      let m;try{m=JSON.parse(e.data)}catch{return}
+      this.onMsg(m,r=>{r.src=ROLE;try{dc.send(JSON.stringify(r))}catch{}});
+    };
+  },
+  drop(p){try{p.pc.close()}catch{};this.peers.delete(p.id)},
+  /* anfitrión (cocina): crea oferta -> código A */
+  async hostOffer(){
+    const p=this.mkPeer();this.wire(p,p.pc.createDataChannel('zmb'));
+    await p.pc.setLocalDescription(await p.pc.createOffer());await waitIce(p.pc);
+    const sdp=p.pc.localDescription.sdp;
+    if(!/a=candidate/.test(sdp)){this.drop(p);throw new Error('No se detecta red local. ¿Wi-Fi conectado?')}
+    p.code=await encDesc(p.pc.localDescription);this.peers.set(p.id,p);return p;
+  },
+  async hostAccept(p,code){
+    const d=await decDesc(code);
+    if(d.type!=='answer')throw new Error('Eso es un código A, aquí va el código B del móvil');
+    await p.pc.setRemoteDescription(d);
+  },
+  /* invitado (barra): recibe código A -> devuelve código B */
+  async guestAnswer(code){
+    const d=await decDesc(code);
+    if(d.type!=='offer')throw new Error('Eso es un código B; aquí va el código A de la cocina');
+    this.peers.forEach(x=>this.drop(x));
+    const p=this.mkPeer();p.pc.ondatachannel=e=>this.wire(p,e.channel);
+    await p.pc.setRemoteDescription(d);
+    await p.pc.setLocalDescription(await p.pc.createAnswer());await waitIce(p.pc);
+    this.peers.set(p.id,p);p.code=await encDesc(p.pc.localDescription);return p;
+  }
+};
+
+/* =====================================================================
+   MENÚ (editable)
+   ===================================================================== */
+const PALETTE=['#2ee6ff','#ffb21e','#ff4fd8','#b4ff2e','#ff7a1a','#9d7bff'];
+const DEFAULT_MENU=[
+ {name:'Bebidas',items:[{n:'Cerveza',p:2},{n:'Tinto de verano',p:2.5},{n:'Refresco',p:2},{n:'Agua',p:1},{n:'Vino fino',p:2},{n:'Anís',p:2},{n:'Cubata',p:6},{n:'Café',p:1.5}]},
+ {name:'Comida',items:[{n:'Chicharrones',p:4},{n:'Papas aliñá',p:3},{n:'Carne con tomate',p:3.5},{n:'Mollete lomo',p:3},{n:'Mollete manteca',p:2},{n:'Sopa de tomate',p:3},{n:'Chorizo brasa',p:3},{n:'Panceta',p:3.5}]},
+ {name:'Dulces',items:[{n:'Pestiños',p:2},{n:'Roscos de vino',p:1.5},{n:'Polvorones',p:1.5},{n:'Torrijas',p:2},{n:'Chocolate',p:2}]}
+];
+let MENU=(()=>{const m=store.get('zmb.menu');return Array.isArray(m)&&m.length?m:DEFAULT_MENU})();
+const catColor=i=>PALETTE[i%PALETTE.length];
+
+/* =====================================================================
+   INFORME DE CIERRE DE CAJA
+   ===================================================================== */
+function aggregate(list){
+  const prod=new Map(),wt=new Map();let total=0;
+  list.forEach(o=>{
+    total+=cents(o.total);
+    const w=wt.get(o.w)||{n:0,c:0};w.n++;w.c+=cents(o.total);wt.set(o.w,w);
+    o.items.forEach(i=>{const k=i.n;const a=prod.get(k)||{q:0,c:0};a.q+=i.q;a.c+=cents(i.p)*i.q;prod.set(k,a)});
+  });
+  return{prod,wt,total,n:list.length};
+}
+function buildReport(list,title,extra){
+  const a=aggregate(list),L='─'.repeat(44),f=c=>eur(c/100).replace(/ /g,' ');
+  const rows=[...a.prod.entries()].sort((x,y)=>y[1].c-x[1].c);
+  const w=Math.max(10,...rows.map(r=>r[0].length))+1;
+  let t=`ZAMBOMBA · CIERRE DE CAJA\n${title}\nFecha: ${fmtDT(Date.now())}\n${L}\n`;
+  t+=`Pedidos:            ${a.n}\nTOTAL RECAUDADO:    ${f(a.total)}\nTicket medio:       ${a.n?f(Math.round(a.total/a.n)):f(0)}\n${L}\nDESGLOSE POR PRODUCTO\n`;
+  rows.forEach(([n,v])=>{t+=`${n.padEnd(w)}x${String(v.q).padStart(4)}  ${f(v.c).padStart(11)}\n`});
+  t+=`${L}\nPOR CAMARERO\n`;
+  [...a.wt.entries()].sort((x,y)=>String(x[0]).localeCompare(String(y[0]),'es',{numeric:true})).forEach(([k,v])=>{t+=`${String(k).padEnd(w)}${String(v.n).padStart(4)} ped ${f(v.c).padStart(11)}\n`});
+  if(extra)t+=`${L}\n${extra}\n`;
+  let csv='﻿Producto;Unidades;Importe (EUR)\n';
+  rows.forEach(([n,v])=>{csv+=`"${n.replace(/"/g,'""')}";${v.q};${(v.c/100).toFixed(2).replace('.',',')}\n`});
+  csv+=`\nTOTAL;${a.n} pedidos;${(a.total/100).toFixed(2).replace('.',',')}\n\nCamarero;Pedidos;Importe (EUR)\n`;
+  a.wt.forEach((v,k)=>{csv+=`"${k}";${v.n};${(v.c/100).toFixed(2).replace('.',',')}\n`});
+  return{txt:t,csv};
+}
+function download(name,text,mime){
+  const b=new Blob([text],{type:mime+';charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);
+}
+function openReport(list,title,extra){
+  const r=buildReport(list,title,extra);
+  const m=modal(`<h2>Cierre de caja</h2><div class="rep">${esc(r.txt)}</div><div class="r"><button class="btn lime" data-t>⬇ Descargar informe (.txt)</button><button class="btn" data-c>⬇ CSV para Excel</button></div>`,'wide');
+  $('[data-t]',m).onclick=()=>download(`cierre-caja-${ROLE}-${stamp()}.txt`,r.txt,'text/plain');
+  $('[data-c]',m).onclick=()=>download(`cierre-caja-${ROLE}-${stamp()}.csv`,r.csv,'text/csv');
+}
+
+/* =====================================================================
+   SELECTOR DE MODO
+   ===================================================================== */
+function showPicker(){
+  $('#app').innerHTML=`<div class="picker">
+    <h1>ZAMBOMBA <span>· comandas</span></h1>
+    <p class="hint">Funciona sin internet. Elige qué hace este dispositivo:</p>
+    <button class="pbtn b" data-r="barra">🍺 BARRA<small>Móvil del camarero</small></button>
+    <button class="pbtn k" data-r="cocina">🔥 COCINA<small>Tablet de cocina (recibe y gestiona comandas)</small></button>
+  </div>`;
+  $$('[data-r]').forEach(b=>b.onclick=()=>{store.set('zmb.role',b.dataset.r);location.hash=b.dataset.r;location.reload()});
+}
+function changeRole(){location.hash='';store.set('zmb.role','');location.reload()}
+function menuEditor(){
+  const m=modal(`<h2>Editar menú</h2><p class="hint">JSON: categorías con productos (<code>n</code> nombre, <code>p</code> precio en €). Se guarda solo en este dispositivo.</p><textarea class="code" rows="14" style="font-size:13px">${esc(JSON.stringify(MENU,null,1))}</textarea><div class="r"><button class="btn red" data-d>Restaurar</button><button class="btn lime" data-s>Guardar</button></div>`,'wide');
+  const ta=$('textarea',m);
+  $('[data-s]',m).onclick=()=>{
+    try{
+      const j=JSON.parse(ta.value);
+      if(!Array.isArray(j)||!j.length)throw 0;
+      j.forEach(c=>{if(!c.name||!Array.isArray(c.items))throw 0;c.items.forEach(i=>{if(!i.n||!(Number(i.p)>=0))throw 0;i.p=Number(i.p)})});
+      store.set('zmb.menu',j);location.reload();
+    }catch{toast('JSON no válido',{kind:'bad'})}
+  };
+  $('[data-d]',m).onclick=()=>{store.set('zmb.menu',null);location.reload()};
+}
+
+/* =====================================================================
+   BARRA (camarero)
+   ===================================================================== */
+let orders=[],byId=new Map();          // pedidos de este dispositivo
+let cart=store.get('zmb.cart',{}),waiter=store.get('zmb.w','');
+let curCat=0,kLast=0,wasAlive=false,sendLock=false;
+const barAlive=()=>Date.now()-kLast<ALIVE_MS;
+const outstanding=()=>orders.filter(o=>o.st!=='done');
+const priceOf=n=>{for(const c of MENU)for(const i of c.items)if(i.n===n)return i.p;return null};
+const cartItems=()=>Object.entries(cart).map(([n,q])=>({n,p:priceOf(n),q})).filter(i=>i.p!=null&&i.q>0);
+const cartTotal=()=>cartItems().reduce((s,i)=>s+cents(i.p)*i.q,0)/100;
+
+async function startBar(){
+  orders=(await DB.all()).sort((a,b)=>a.ts-b.ts);orders.forEach(o=>byId.set(o.id,o));
+  $('#app').innerHTML=`
+  <header class="top">
+    <div class="row1"><div class="brand">ZAMBOMBA <span>BARRA</span></div>
+      <button class="pill off" id="pill"></button><button class="ico" id="btnMenu" aria-label="Menú">☰</button></div>
+    <div class="waiters" id="waiters"></div>
+  </header>
+  <nav class="cats" id="cats"></nav>
+  <main class="grid" id="grid"></main>
+  <div class="dock"><div class="sum"><div class="txt" id="sumtxt"></div><button id="clr">VACIAR</button></div>
+    <button class="send" id="send"></button></div>`;
+  renderWaiters();renderCats();renderGrid();updateCart();updatePill();
+  $('#btnMenu').onclick=barMenu;$('#pill').onclick=barPairing;
+  $('#clr').onclick=()=>{cart={};updateCart();buzz(20)};
+  $('#send').onclick=submitOrder;
+  Net.init(bHandle);
+  const ping=()=>{Net.send({t:'ping',dev:DEV,w:waiter,open:outstanding().slice(-300).map(o=>o.id)});checkAlive()};
+  setInterval(ping,3000);setInterval(()=>{checkAlive();updatePill()},1000);ping();
+  keepAwake();
+}
+function renderWaiters(){
+  const box=$('#waiters');if(!box)return;
+  const nums=Array.from({length:12},(_,i)=>String(i+1));
+  const list=(waiter&&!nums.includes(waiter))?[waiter,...nums]:nums;
+  box.innerHTML=`<div class="lbl">CAMA-<br>RERO</div>`+list.map(w=>`<button class="wchip ${w===waiter?'sel':''}" data-w="${esc(w)}">${esc(w)}</button>`).join('')+`<button class="wchip kb" data-kb>⌨</button>`;
+  $$('[data-w]',box).forEach(b=>b.onclick=()=>{setWaiter(b.dataset.w)});
+  $('[data-kb]',box).onclick=openPad;
+  const s=$('.sel',box);if(s)s.scrollIntoView({inline:'center',block:'nearest'});
+}
+function setWaiter(w){waiter=w;store.set('zmb.w',w);renderWaiters();buzz(15)}
+function openPad(){
+  const m=modal(`<h2>¿Quién eres?</h2><input class="wv" inputmode="numeric" maxlength="14" placeholder="Nº o nombre" autocomplete="off" value="${esc(waiter)}">
+    <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}<button class="alt" data-k="b">⌫</button><button data-k="0">0</button><button class="okk" data-k="ok">✔</button></div>
+    <p class="hint">Toca el recuadro para escribir un nombre con el teclado.</p>`);
+  const inp=$('.wv',m);inp.value=waiter;
+  $$('[data-k]',m).forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;buzz(10);
+    if(k==='b')inp.value=inp.value.slice(0,-1);
+    else if(k==='ok'){const v=inp.value.trim();if(v){setWaiter(v);m.close()}}
+    else inp.value+=k;
+  });
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=inp.value.trim();if(v){setWaiter(v);m.close()}}});
+}
+function renderCats(){
+  const box=$('#cats');
+  box.innerHTML=MENU.map((c,i)=>`<button class="cat ${i===curCat?'sel':''}" data-i="${i}" style="--c:${catColor(i)}">${esc(c.name)}</button>`).join('');
+  $$('.cat',box).forEach(b=>b.onclick=()=>{curCat=+b.dataset.i;renderCats();renderGrid();updateCart();buzz(8)});
+}
+function renderGrid(){
+  const c=MENU[curCat]||MENU[0];
+  $('#grid').innerHTML=c.items.map(i=>`<button class="prod" data-n="${esc(i.n)}" style="--c:${catColor(curCat)}"><span class="pn">${esc(i.n)}</span><span class="pp">${eur(i.p)}</span><span class="badge">+0</span><span class="minus" data-m>−</span></button>`).join('');
+  $$('.prod').forEach(b=>{
+    b.onclick=e=>{
+      const n=b.dataset.n;
+      if(e.target.closest('[data-m]')){
+        if(cart[n]){cart[n]--;if(!cart[n])delete cart[n]}
+        buzz(10);updateCart(n);return;
+      }
+      cart[n]=(cart[n]||0)+1;buzz(14);
+      b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash');
+      const f=document.createElement('i');f.className='fly';f.textContent='+1';f.style.fontStyle='normal';b.append(f);f.onanimationend=()=>f.remove();
+      updateCart(n,true);
+    };
+  });
+}
+function updateCart(bumpName,bump){
+  $$('.prod').forEach(b=>{
+    const q=cart[b.dataset.n]||0;b.classList.toggle('has',q>0);
+    const bd=$('.badge',b);bd.textContent='+'+q;
+    if(bump&&b.dataset.n===bumpName){bd.classList.remove('bump');void bd.offsetWidth;bd.classList.add('bump')}
+  });
+  const items=cartItems(),tot=cartTotal(),s=$('#send');
+  s.disabled=!items.length;
+  s.textContent=items.length?`ENVIAR A COCINA (${eur(tot)})`:'Toca productos para empezar';
+  $('#sumtxt').textContent=items.map(i=>`${i.q}× ${i.n}`).join(' · ');
+  $('#clr').style.display=items.length?'':'none';
+  store.set('zmb.cart',cart);
+}
+function submitOrder(){
+  if(sendLock)return;const items=cartItems();if(!items.length)return;
+  if(!waiter){const w=$('#waiters');w.classList.remove('shake');void w.offsetWidth;w.classList.add('shake');toast('Elige tu camarero primero',{kind:'warn'});buzz([60,40,60]);openPad();return}
+  sendLock=true;setTimeout(()=>sendLock=false,600);
+  const o={id:DEV+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),w:waiter,items:items.map(i=>({n:i.n,p:i.p,q:i.q})),total:cartTotal(),ts:Date.now(),st:'queued',num:null};
+  cart={};updateCart();                      // carrito limpio al instante
+  orders.push(o);byId.set(o.id,o);transmit(o);DB.put(o);
+  buzz([30,30,60]);
+  toast(barAlive()?'✔ Enviado a cocina':'⏳ Sin cocina: guardado en cola',{kind:barAlive()?'ok':'warn',ms:1600});
+  updatePill();
+}
+function transmit(o){
+  Net.send({t:'order',dev:DEV,w:waiter,o:{id:o.id,w:o.w,items:o.items,total:o.total,ts:o.ts}});
+  if(o.st==='queued'&&barAlive()){o.st='sent';DB.put(o)}
+}
+function applyStatus(id,num,st){
+  const o=byId.get(id);if(!o)return;
+  const ns=st==='done'?'done':'acked';let ch=false;
+  if(num!=null&&o.num!==num){o.num=num;ch=true}
+  if(o.st!==ns){const was=o.st;o.st=ns;ch=true;if(ns==='done'&&was!=='done'){chimeReady();toast(`✔ Pedido #${pad(o.num||0)} LISTO · ${o.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}`,{kind:'ok',ms:5000})}}
+  if(ch){DB.put(o);updatePill()}
+}
+function bHandle(m){
+  if(!m||m.src!=='cocina')return;if(m.to&&m.to!==DEV)return;
+  kLast=Date.now();
+  if(m.t==='ack')applyStatus(m.id,m.num,m.st);
+  else if(m.t==='status')applyStatus(m.id,m.num,m.st);
+  else if(m.t==='pong'){
+    const known=new Set();(m.st||[]).forEach(([id,num,st])=>{known.add(id);applyStatus(id,num,st)});
+    orders.filter(o=>(o.st==='queued'||o.st==='sent')&&!known.has(o.id)).forEach(transmit);
+  }
+  checkAlive();
+}
+function checkAlive(){
+  const a=barAlive();
+  if(a&&!wasAlive){toast('● Conectado con cocina',{kind:'ok',ms:1500});orders.filter(o=>o.st==='queued'||o.st==='sent').forEach(transmit)}
+  if(!a&&wasAlive)toast('○ Cocina sin señal · los pedidos quedan en cola',{kind:'warn',ms:3000});
+  wasAlive=a;
+}
+function updatePill(){
+  const p=$('#pill');if(!p)return;const a=barAlive(),q=orders.filter(o=>o.st==='queued'||o.st==='sent').length;
+  p.className='pill '+(a?'ok':'off');
+  p.textContent=a?(q?`● COCINA · ${q} enviando`:'● COCINA'):`○ SIN COCINA${q?' · '+q+' en cola':''}`;
+}
+function barMenu(){
+  const m=modal(`<h2>Menú</h2>
+    <button class="mrow" data-a="caja"><i>💶</i>Cierre de caja</button>
+    <button class="mrow" data-a="hist"><i>🧾</i>Mis pedidos</button>
+    <button class="mrow" data-a="net"><i>📶</i>Conectar con cocina</button>
+    <button class="mrow" data-a="menu"><i>✏️</i>Editar menú / precios</button>
+    <button class="mrow" data-a="role"><i>🔀</i>Cambiar de modo</button>
+    <button class="mrow red" data-a="reset"><i>🗑</i>Nueva noche (borrar datos)</button>`);
+  $$('[data-a]',m).forEach(b=>b.onclick=()=>{
+    const a=b.dataset.a;m.close();
+    if(a==='caja')openReport(orders,`BARRA · dispositivo ${DEV}`,`Pendientes de sincronizar con cocina: ${orders.filter(o=>o.st==='queued'||o.st==='sent').length}`);
+    else if(a==='hist')barHistory();else if(a==='net')barPairing();else if(a==='menu')menuEditor();else if(a==='role')changeRole();
+    else if(a==='reset')confirmBox('Se borrarán todos los pedidos de este móvil. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();cart={};updateCart();updatePill();toast('Datos borrados',{kind:'warn'})});
+  });
+}
+function barHistory(){
+  const rows=orders.slice(-40).reverse().map(o=>{
+    const s=o.st==='done'?['✔ LISTO','d']:o.st==='acked'?['EN COCINA','k']:['⏳ EN COLA','q'];
+    return `<div class="hrow"><div class="n">${o.num!=null?'#'+pad(o.num):'···'}</div><div class="d">${o.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}<br>${esc(o.w)} · ${eur(o.total)}</div><div class="s ${s[1]}">${s[0]}</div></div>`}).join('');
+  modal(`<h2>Mis pedidos</h2>${rows||'<p class="hint">Todavía no hay pedidos.</p>'}`);
+}
+function barPairing(){
+  const m=modal(`<h2>Conectar con cocina</h2>
+    <p class="hint">Mismo Wi-Fi (no hace falta internet). Solo hay que hacerlo una vez por conexión.</p>
+    <label>1 · CÓDIGO A (te lo da la cocina)</label><textarea class="code" rows="3" placeholder="Pega aquí el código A"></textarea>
+    <div class="r"><button class="btn" data-p>Pegar</button><button class="btn lime" data-g>Generar respuesta</button></div>
+    <div data-b hidden><label>2 · CÓDIGO B (llévaselo a la cocina)</label><textarea class="code" rows="3" readonly></textarea>
+      <div class="r"><button class="btn" data-c>Copiar</button><button class="btn" data-s>Compartir</button></div><div class="st" data-st>Esperando a la cocina…</div></div>`);
+  const [ta,tb]=$$('textarea',m);
+  $('[data-p]',m).onclick=()=>pasteInto(ta);
+  $('[data-g]',m).onclick=async e=>{
+    e.target.disabled=true;
+    try{
+      const p=await Net.guestAnswer(ta.value);tb.value=p.code;$('[data-b]',m).hidden=false;
+      p.onopen=()=>{kLast=0;Net.send({t:'ping',dev:DEV,w:waiter,open:outstanding().map(o=>o.id)});const s=$('[data-st]',m);if(s){s.textContent='✔ Conectado';s.className='st ok'}buzz(60);setTimeout(()=>m.isConnected&&m.close(),900)};
+      p.onfail=()=>{const s=$('[data-st]',m);if(s){s.textContent='✖ No se pudo conectar. Repite el proceso.';s.className='st bad'}};
+    }catch(err){toast(esc(err.message),{kind:'bad',ms:3500})}
+    e.target.disabled=false;
+  };
+  $('[data-c]',m).onclick=()=>copyText(tb.value,tb);
+  $('[data-s]',m).onclick=()=>shareText(tb.value);
+}
+
+/* =====================================================================
+   COCINA (tablet)
+   ===================================================================== */
+const seen=new Map();let nextNum=1;
+const kAlive=()=>[...seen.values()].filter(s=>Date.now()-s.last<ALIVE_MS);
+const WCOLORS=['#b4ff2e','#2ee6ff','#ffb21e','#ff4fd8','#ff7a1a','#9d7bff','#4dffa6','#ff6b6b'];
+const wColor=w=>{let h=0;for(const ch of String(w))h=(h*31+ch.charCodeAt(0))>>>0;return WCOLORS[h%WCOLORS.length]};
+const wLabel=w=>/^\d+$/.test(w)?'CAMARERO '+w:String(w).toUpperCase();
+
+async function startKitchen(){
+  orders=(await DB.all()).sort((a,b)=>a.num-b.num);orders.forEach(o=>byId.set(o.id,o));
+  nextNum=orders.reduce((m,o)=>Math.max(m,o.num),0)+1;
+  $('#app').innerHTML=`
+  <header class="kh"><h1>COCINA <span>·</span></h1><div class="cnt" id="cnt">0 PENDIENTES</div>
+    <button class="pill off" id="pill"></button><div class="sp"></div>
+    <button class="ico" id="bSnd" aria-label="Sonido"></button>
+    <button class="ico" id="bRec" aria-label="Entregadas">↩</button>
+    <button class="ico" id="bMenu" aria-label="Menú">☰</button></header>
+  <main class="kgrid" id="kgrid"><div class="empty" id="empty"><b>✔</b>Sin comandas pendientes</div></main>`;
+  $('#bMenu').onclick=kMenu;$('#pill').onclick=hostPairing;$('#bRec').onclick=recentList;
+  const snd=()=>{$('#bSnd').textContent=soundOn?'🔔':'🔕'};snd();
+  $('#bSnd').onclick=()=>{soundOn=!soundOn;store.set('zmb.sound',soundOn);snd();if(soundOn)ringNew()};
+  Net.init(kHandle);
+  renderKitchen();
+  setInterval(()=>{tick();kPill()},1000);kPill();
+  keepAwake();
+  toast('Toca cualquier botón una vez para activar el sonido',{kind:'warn',ms:4000});
+}
+function kHandle(m,reply){
+  if(!m||m.src!=='barra')return;const now=Date.now();
+  if(m.dev){const s=seen.get(m.dev);seen.set(m.dev,{dev:m.dev,w:m.w||(s&&s.w)||'?',last:now})}
+  if(m.t==='ping'){
+    const st=[];(m.open||[]).forEach(id=>{const o=byId.get(id);if(o)st.push([id,o.num,o.st])});
+    reply({t:'pong',to:m.dev,st});
+  }else if(m.t==='order'&&m.o&&m.o.id){
+    const o=ingest(m.o);reply({t:'ack',to:m.dev,id:o.id,num:o.num,st:o.st});
+  }
+  kPill();
+}
+function ingest(o){
+  let r=byId.get(o.id);if(r)return r;
+  r={id:o.id,num:nextNum++,w:o.w,items:o.items,total:o.total,ts:o.ts,rcv:Date.now(),st:'new'};
+  orders.push(r);byId.set(r.id,r);DB.put(r);renderKitchen(r.id);ringNew();return r;
+}
+function cardEl(o,fresh){
+  const c=document.createElement('article');c.className='card'+(fresh?' fresh':'');c.dataset.id=o.id;c.dataset.num=o.num;c.dataset.rcv=o.rcv;
+  c.style.setProperty('--wc',wColor(o.w));
+  c.innerHTML=`<div class="ch"><div class="num">#${pad(o.num)}</div><div class="chr"><div class="wtag">${esc(wLabel(o.w))}</div><div class="tm">00:00</div></div></div>
+    <ul class="li">${o.items.map(i=>`<li><b>${i.q}×</b> ${esc(i.n)}</li>`).join('')}</ul>
+    <button class="done">LISTO / ENTREGADO</button>`;
+  $('.done',c).onclick=()=>markDone(o.id);
+  if(fresh)setTimeout(()=>c.classList.remove('fresh'),2500);
+  return c;
+}
+function renderKitchen(freshId){
+  const grid=$('#kgrid');if(!grid)return;
+  const pend=orders.filter(o=>o.st==='new').sort((a,b)=>a.num-b.num),want=new Set(pend.map(o=>o.id));
+  $$('.card',grid).forEach(c=>{if(!want.has(c.dataset.id))c.remove()});
+  const have=new Set($$('.card',grid).map(c=>c.dataset.id));
+  pend.forEach(o=>{
+    if(have.has(o.id))return;
+    const el=cardEl(o,o.id===freshId);
+    const after=$$('.card',grid).find(c=>+c.dataset.num>o.num);
+    after?grid.insertBefore(el,after):grid.append(el);
+  });
+  $('#empty').style.display=pend.length?'none':'';
+  $('#cnt').textContent=pend.length+(pend.length===1?' PENDIENTE':' PENDIENTES');
+  tick();
+}
+function tick(){
+  const now=Date.now();
+  $$('.card').forEach(c=>{
+    const s=Math.max(0,Math.floor((now-(+c.dataset.rcv))/1000));
+    $('.tm',c).textContent=pad(Math.floor(s/60),2)+':'+pad(s%60,2);
+    c.classList.toggle('warn',s>=300&&s<600);c.classList.toggle('crit',s>=600);
+  });
+}
+function kPill(){
+  const p=$('#pill');if(!p)return;const n=kAlive().length;
+  p.className='pill '+(n?'ok':'off');p.textContent=n?`● ${n} CAMARERO${n>1?'S':''}`:'○ SIN CAMAREROS · CONECTAR';
+  const l=$('#plist');if(l)l.innerHTML=kAlive().map(s=>`<div class="hrow"><div class="n">${esc(s.w)}</div><div class="d">dispositivo ${esc(s.dev)}</div><div class="s d">● en línea</div></div>`).join('')||'<p class="hint">Ninguno todavía.</p>';
+}
+function markDone(id){
+  const o=byId.get(id);if(!o||o.st!=='new')return;
+  o.st='done';o.doneAt=Date.now();DB.put(o);buzz(30);
+  Net.send({t:'status',id:o.id,num:o.num,st:'done'});
+  const c=$(`.card[data-id="${CSS.escape(id)}"]`);if(c)c.classList.add('out');
+  setTimeout(()=>renderKitchen(),290);
+  toast(`#${pad(o.num)} entregado`,{ms:6000,action:['DESHACER',()=>undo(id)]});
+}
+function undo(id){
+  const o=byId.get(id);if(!o||o.st!=='done')return;
+  o.st='new';delete o.doneAt;DB.put(o);Net.send({t:'status',id:o.id,num:o.num,st:'new'});renderKitchen();
+}
+function recentList(){
+  const rows=orders.filter(o=>o.st==='done').sort((a,b)=>b.doneAt-a.doneAt).slice(0,20).map(o=>`<div class="hrow"><div class="n">#${pad(o.num)}</div><div class="d">${esc(wLabel(o.w))}<br>${o.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}</div><button class="btn" data-u="${esc(o.id)}">Recuperar</button></div>`).join('');
+  const m=modal(`<h2>Entregadas recientemente</h2>${rows||'<p class="hint">Nada todavía.</p>'}`);
+  $$('[data-u]',m).forEach(b=>b.onclick=()=>{undo(b.dataset.u);m.close()});
+}
+function kMenu(){
+  const m=modal(`<h2>Menú cocina</h2>
+    <button class="mrow" data-a="net"><i>📶</i>Conectar camareros</button>
+    <button class="mrow" data-a="caja"><i>💶</i>Cierre de caja (todas las barras)</button>
+    <button class="mrow" data-a="role"><i>🔀</i>Cambiar de modo</button>
+    <button class="mrow red" data-a="reset"><i>🗑</i>Nueva noche (borrar datos)</button>`);
+  $$('[data-a]',m).forEach(b=>b.onclick=()=>{
+    const a=b.dataset.a;m.close();
+    if(a==='net')hostPairing();
+    else if(a==='caja')openReport(orders,'COCINA · todos los pedidos recibidos',`Pendientes de entregar: ${orders.filter(o=>o.st==='new').length}`);
+    else if(a==='role')changeRole();
+    else if(a==='reset')confirmBox('Se borrarán TODAS las comandas de la cocina y el contador volverá a #001. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();nextNum=1;renderKitchen();toast('Datos borrados',{kind:'warn'})});
+  });
+}
+function hostPairing(){
+  const m=modal(`<h2>Conectar camareros</h2>
+    <p class="hint">Todos en el mismo Wi-Fi (sin internet vale). Por cada móvil: <b>1)</b> pásale el CÓDIGO A (copiar/compartir, AirDrop, Nearby Share…), <b>2)</b> pega aquí el CÓDIGO B que te devuelve. Si estáis en la misma tablet/PC con pestañas, se conectan solos.</p>
+    <div id="slots"></div><button class="btn lime full" data-add>＋ Añadir camarero</button>
+    <h3>CONECTADOS</h3><div id="plist"></div>`,'wide');
+  kPill();
+  $('[data-add]',m).onclick=()=>addSlot($('#slots',m));addSlot($('#slots',m));
+}
+async function addSlot(box){
+  const s=document.createElement('div');s.className='slot';
+  s.innerHTML=`<div class="slt"><b>Nuevo camarero</b><span class="st">Generando código…</span></div>
+    <label>CÓDIGO A · para el móvil</label><textarea class="code" rows="3" readonly></textarea>
+    <div class="r"><button class="btn" data-c>Copiar</button><button class="btn" data-s>Compartir</button></div>
+    <label>CÓDIGO B · respuesta del móvil</label><textarea class="code" rows="3" placeholder="Pega aquí el código B"></textarea>
+    <div class="r"><button class="btn" data-p>Pegar</button><button class="btn lime" data-ok>Conectar</button></div>`;
+  box.append(s);
+  const [ta,tb]=$$('textarea',s),st=$('.st',s);
+  try{
+    const p=await Net.hostOffer();ta.value=p.code;st.textContent='Esperando código B…';
+    p.onopen=()=>{st.textContent='✔ Conectado';st.className='st ok';buzz(60);setTimeout(()=>s.remove(),1500)};
+    p.onfail=()=>{st.textContent='✖ Falló. Quita este y añade otro.';st.className='st bad'};
+    $('[data-ok]',s).onclick=async()=>{
+      try{st.textContent='Conectando…';await Net.hostAccept(p,tb.value)}catch(e){st.textContent='✖ '+e.message;st.className='st bad'}
+    };
+  }catch(e){st.textContent='✖ '+e.message;st.className='st bad'}
+  $('[data-c]',s).onclick=()=>copyText(ta.value,ta);
+  $('[data-s]',s).onclick=()=>shareText(ta.value);
+  $('[data-p]',s).onclick=()=>pasteInto(tb);
+}
+
+/* =====================================================================
+   ARRANQUE
+   ===================================================================== */
+(async()=>{
+  if(!ROLE){showPicker();return}
+  document.title=(ROLE==='barra'?'Barra':'Cocina')+' · Zambomba';
+  await DB.init();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch{}
+  try{ROLE==='barra'?await startBar():await startKitchen()}catch(e){console.error(e);$('#app').innerHTML='<p style="padding:20px">Error al iniciar: '+esc(e.message)+'</p>'}
+})();
+addEventListener('hashchange',()=>location.reload());
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
