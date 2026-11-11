@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09090a">
+<meta name="robots" content="noindex,nofollow">
+<title>Solera TPV · Administración</title>
+<style>
+:root{--bg:#09090a;--s1:#121110;--s2:#181716;--s3:#211f1d;--line:#262321;--line2:#37332f;--tx:#f3eee6;--mut:#8f8981;--gold:#c9a36a;--ok:#3fbf8b;--okd:#03150e;--amb:#f2a33a;--red:#ff5c5c;--serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background-color:var(--bg);background-image:radial-gradient(900px 420px at 50% -8%,rgba(201,163,106,.09),transparent 70%);background-attachment:fixed}
+body{margin:0;min-height:100vh;color:var(--tx);font-family:"SF Pro Display","Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input,select{font:inherit;color:var(--tx)}
+h2{margin:0 0 4px;font-size:22px;font-weight:650;letter-spacing:-.01em}
+.hint{color:var(--mut);font-size:14px;line-height:1.5;margin:4px 0 16px}
+.brand{font-family:var(--serif);font-size:28px;line-height:1}
+.brand small{font-family:inherit;font-size:10px;letter-spacing:.24em;font-weight:600;color:var(--gold);margin-left:10px;font-family:"SF Pro Display","Inter",system-ui,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 80px}
+.top{display:flex;align-items:center;gap:12px;padding:18px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top .sp{flex:1}.who{color:var(--mut);font-size:13px}
+.btn{min-height:40px;padding:0 16px;border-radius:11px;background:var(--s3);font-weight:600;font-size:14px;border:1px solid var(--line2)}
+.btn:hover{border-color:var(--gold)}
+.btn.pri{background:var(--ok);color:var(--okd);border-color:var(--ok)}
+.btn.red{color:#ff9b9b;border-color:rgba(255,92,92,.35);background:rgba(255,92,92,.08)}
+.btn.sm{min-height:34px;padding:0 10px;font-size:13px}
+.btn[disabled]{opacity:.4;cursor:default}
+.tabs{display:flex;gap:4px;margin:16px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{padding:12px 18px;font-weight:600;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab.sel{color:var(--tx);border-bottom-color:var(--gold)}
+.card{background:var(--s1);border:1px solid var(--line2);border-radius:18px;padding:16px;margin-bottom:14px}
+.chead{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.chead input{flex:1;min-width:140px;font-size:17px;font-weight:650}
+input[type=text],input[type=number],input[type=email],input[type=password],select{height:42px;border-radius:11px;background:var(--bg);border:1px solid var(--line2);padding:0 12px;outline:none;width:100%}
+input:focus,select:focus{border-color:var(--gold)}
+.row{display:grid;grid-template-columns:1fr 110px 112px auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.row.off input[type=text],.row.off input[type=number]{opacity:.5}
+.row .acts{display:flex;gap:4px}
+.sw{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);cursor:pointer;user-select:none}
+.sw input{width:20px;height:20px;accent-color:var(--ok)}
+.sw.on{color:var(--ok)}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;letter-spacing:.14em;color:var(--mut);text-align:left;font-weight:600;padding:8px 6px}
+td{padding:10px 6px;border-top:1px solid var(--line);font-size:14px}
+td select{height:38px;width:auto}
+.tag{font-size:12px;color:var(--mut)}
+.login{max-width:400px;margin:0 auto;padding:12vh 20px 40px}
+.login .brand{font-size:56px;margin-bottom:6px}
+.login .by{font-size:11.5px;letter-spacing:.26em;color:var(--gold);font-weight:600;padding-bottom:22px;margin-bottom:22px;border-bottom:1px solid var(--line2)}
+label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--mut);margin:14px 0 5px}
+.err{color:var(--red);font-size:14px;min-height:20px;margin-top:10px}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:22px!important;letter-spacing:.06em;text-align:center}
+#toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99;background:rgba(24,24,27,.96);border:1px solid var(--line2);border-radius:12px;padding:10px 16px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:.25s}
+#toast.on{opacity:1}#toast.ok{border-color:rgba(63,191,139,.6);color:#9be8c6}#toast.bad{border-color:rgba(255,92,92,.6);color:#ff9b9b}
+@media(max-width:640px){.row{grid-template-columns:1fr 96px;}.row .sw,.row .acts{grid-column:1/-1}th:nth-child(3),td:nth-child(3){display:none}}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="toast"></div>
+<script>
+(()=>{
+'use strict';
+const SB={url:'https://trvpotojljatuoyegbbu.supabase.co',key:'sb_publishable_fQ20fycMsWe3PHCXSNV1kQ_BCdh9P9W'};
+const SESS_KEY='zmb.sess';
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const eur=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n);
+let tt;function toast(m,k='ok'){const t=$('#toast');t.textContent=m;t.className='on '+k;clearTimeout(tt);tt=setTimeout(()=>t.className='',1800)}
+
+async function sb(path,{method='GET',body,token,headers={},timeout=10000}={}){
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),timeout);
+  try{
+    const r=await fetch(SB.url+path,{method,signal:ac.signal,headers:Object.assign({apikey:SB.key,'Content-Type':'application/json'},token?{Authorization:'Bearer '+token}:{},headers),body:body!==undefined?JSON.stringify(body):undefined});
+    let j=null;try{j=await r.json()}catch{}
+    if(!r.ok){const e=new Error((j&&(j.error_description||j.msg||j.error||j.message))||('HTTP '+r.status));e.status=r.status;throw e}
+    return j;
+  }catch(e){if(e.status===undefined)e.net=true;throw e}finally{clearTimeout(t)}
+}
+let S=lsGet(SESS_KEY);
+async function token(){
+  if(S.exp-Date.now()>60000)return S.at;
+  const j=await sb('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:S.rt}});
+  S.at=j.access_token;S.rt=j.refresh_token;S.exp=Date.now()+j.expires_in*1000;lsSet(SESS_KEY,S);return S.at;
+}
+const api=async(p,o={})=>sb(p,Object.assign({token:await token()},o));
+function logout(){try{localStorage.removeItem(SESS_KEY)}catch{}S=null;showLogin()}
+
+/* ---------- login ---------- */
+function showLogin(msg=''){
+  $('#app').innerHTML=`<div class="login"><div class="brand">Solera</div><div class="by">ADMINISTRACIÓN · BY VØLDEN</div>
+    <form id="f"><label>CORREO</label><input type="email" name="email" autocomplete="email" autocapitalize="off">
+    <label>CONTRASEÑA</label><input type="password" name="password" autocomplete="current-password">
+    <div class="err" id="err">${esc(msg)}</div><button class="btn pri" style="width:100%;height:48px;margin-top:8px">Entrar</button></form></div>`;
+  $('#f').onsubmit=async e=>{
+    e.preventDefault();const f=e.target,err=$('#err'),b=$('button',f);err.textContent='';b.disabled=true;
+    try{
+      const j=await sb('/auth/v1/token?grant_type=password',{method:'POST',body:{email:f.email.value.trim().toLowerCase(),password:f.password.value}});
+      const pr=await sb(`/rest/v1/profiles?id=eq.${j.user.id}&select=name,email,role,active`,{token:j.access_token});const p=pr&&pr[0];
+      if(!p||!p.active||p.role!=='admin'){err.textContent='Esta cuenta no es de administrador.';b.disabled=false;return}
+      S={at:j.access_token,rt:j.refresh_token,exp:Date.now()+j.expires_in*1000,uid:j.user.id,name:p.name,email:p.email,role:p.role,ver:Date.now()};lsSet(SESS_KEY,S);showApp();
+    }catch(x){err.textContent=x.net?'Sin conexión a internet.':/Invalid login/i.test(x.message)?'Correo o contraseña incorrectos':x.message;b.disabled=false}
+  };
+}
+
+/* ---------- app ---------- */
+let tab='carta',items=[],team=[],code='';
+async function showApp(){
+  $('#app').innerHTML=`<div class="wrap"><div class="top"><div class="brand">Solera<small>ADMINISTRACIÓN</small></div><div class="sp"></div><span class="who">${esc(S.name)} · ${esc(S.email)}</span><button class="btn sm" id="out">Cerrar sesión</button></div>
+    <div class="tabs">${[['carta','Carta y precios'],['equipo','Equipo'],['acceso','Código de acceso'],['cocina','Cocina y barra']].map(([k,l])=>`<button class="tab" data-t="${k}">${l}</button>`).join('')}</div><div id="view"></div></div>`;
+  $('#out').onclick=logout;
+  $$('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});
+  draw();
+}
+async function draw(){
+  $$('.tab').forEach(b=>b.classList.toggle('sel',b.dataset.t===tab));
+  const v=$('#view');v.innerHTML='<p class="hint">Cargando…</p>';
+  try{
+    if(tab==='carta'){items=await api('/rest/v1/menu_items?select=*&order=sort.asc');drawMenu()}
+    else if(tab==='equipo'){team=await api('/rest/v1/profiles?select=id,name,email,role,active,created_at&order=created_at.asc');drawTeam()}
+    else if(tab==='acceso'){const r=await api('/rest/v1/settings?key=eq.access_code&select=value');code=r&&r[0]?r[0].value:'';drawAccess()}
+    else drawKitchen();
+  }catch(e){
+    if(e.status===401||e.status===400){logout();return}
+    v.innerHTML=`<p class="hint" style="color:var(--red)">${e.net?'Sin conexión a internet.':esc(e.message)}</p>`;
+  }
+}
+
+/* ---------- carta ---------- */
+const groups=()=>{const m=new Map();items.slice().sort((a,b)=>a.sort-b.sort).forEach(i=>{if(!m.has(i.category))m.set(i.category,[]);m.get(i.category).push(i)});return [...m]};
+function drawMenu(){
+  const g=groups();
+  $('#view').innerHTML=`<h2>Carta y precios</h2><p class="hint">Los cambios se guardan solos y llegan a los móviles cuando tengan internet. “Disponible” apagado = el producto no aparece en barra (agotado).</p>
+  ${g.map(([cat,list],gi)=>`<div class="card" data-cat="${esc(cat)}">
+    <div class="chead"><input type="text" value="${esc(cat)}" data-rencat="${esc(cat)}" maxlength="30">
+      <button class="btn sm" data-mvcat="${gi}" data-d="-1" ${gi===0?'disabled':''}>↑</button><button class="btn sm" data-mvcat="${gi}" data-d="1" ${gi===g.length-1?'disabled':''}>↓</button>
+      <button class="btn sm pri" data-addprod="${esc(cat)}">＋ Producto</button><button class="btn sm red" data-delcat="${esc(cat)}">Borrar categoría</button></div>
+    ${list.map((i,ii)=>`<div class="row ${i.active?'':'off'}" data-id="${i.id}">
+      <input type="text" value="${esc(i.name)}" data-f="name" maxlength="40"><input type="number" step="0.05" min="0" inputmode="decimal" value="${Number(i.price)}" data-f="price">
+      <label class="sw ${i.active?'on':''}" style="margin:0;letter-spacing:0;font-size:13px;font-weight:500"><input type="checkbox" data-f="active" ${i.active?'checked':''}>${i.active?'Disponible':'Agotado'}</label>
+      <div class="acts"><button class="btn sm" data-mv="${i.id}" data-d="-1" ${ii===0?'disabled':''}>↑</button><button class="btn sm" data-mv="${i.id}" data-d="1" ${ii===list.length-1?'disabled':''}>↓</button><button class="btn sm red" data-del="${i.id}">✕</button></div></div>`).join('')}
+  </div>`).join('')}
+  <div class="card"><div class="chead"><input type="text" id="newcat" placeholder="Nombre de la nueva categoría (p. ej. Tapas)" maxlength="30"><button class="btn pri" id="addcat">＋ Añadir categoría</button></div></div>`;
+  const v=$('#view');
+  v.onchange=async e=>{
+    const t=e.target,row=t.closest('.row');
+    try{
+      if(t.dataset.rencat!==undefined){
+        const nv=t.value.trim(),old=t.dataset.rencat;if(!nv||nv===old){t.value=old;return}
+        await api(`/rest/v1/menu_items?category=eq.${encodeURIComponent(old)}`,{method:'PATCH',body:{category:nv},headers:{Prefer:'return=minimal'}});
+        items.forEach(i=>{if(i.category===old)i.category=nv});toast('Categoría renombrada');drawMenu();return;
+      }
+      if(!row)return;const id=row.dataset.id,f=t.dataset.f,it=items.find(x=>x.id===id);let val;
+      if(f==='price'){val=Math.round(parseFloat(String(t.value).replace(',','.'))*100)/100;if(!(val>=0)){t.value=it.price;toast('Precio no válido','bad');return}}
+      else if(f==='active')val=t.checked;else{val=t.value.trim();if(!val){t.value=it.name;return}}
+      await api(`/rest/v1/menu_items?id=eq.${id}`,{method:'PATCH',body:{[f]:val},headers:{Prefer:'return=minimal'}});
+      it[f]=val;toast('Guardado ✓');if(f==='active')drawMenu();
+    }catch(x){toast(x.net?'Sin conexión':x.message,'bad')}
+  };
+  v.onclick=async e=>{
+    const b=e.target.closest('button');if(!b)return;
+    try{
+      if(b.id==='addcat'){const n=$('#newcat').value.trim();if(!n)return;await addItem(n);return}
+      if(b.dataset.addprod!==undefined){await addItem(b.dataset.addprod);return}
+      if(b.dataset.del){if(!confirm('¿Borrar este producto?'))return;await api(`/rest/v1/menu_items?id=eq.${b.dataset.del}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});items=items.filter(i=>i.id!==b.dataset.del);drawMenu();toast('Borrado');return}
+      if(b.dataset.delcat!==undefined){if(!confirm(`¿Borrar la categoría “${b.dataset.delcat}” y todos sus productos?`))return;await api(`/rest/v1/menu_items?category=eq.${encodeURIComponent(b.dataset.delcat)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});items=items.filter(i=>i.category!==b.dataset.delcat);drawMenu();toast('Borrada');return}
+      if(b.dataset.mv){await move(groups(),b.dataset.mv,+b.dataset.d,false);return}
+      if(b.dataset.mvcat!==undefined){await move(groups(),+b.dataset.mvcat,+b.dataset.d,true)}
+    }catch(x){toast(x.net?'Sin conexión':x.message,'bad')}
+  };
+}
+async function addItem(cat){
+  const mx=items.reduce((m,i)=>Math.max(m,i.sort),0);
+  const same=items.filter(i=>i.category===cat),sort=same.length?Math.max(...same.map(i=>i.sort))+1:mx+1000;
+  const r=await api('/rest/v1/menu_items',{method:'POST',body:{category:cat,name:'Nuevo producto',price:0,sort,active:false},headers:{Prefer:'return=representation'}});
+  items.push(r[0]);drawMenu();toast('Producto añadido (edítalo y actívalo)');
+}
+async function move(g,ref,d,isCat){
+  const order=g.map(([c,l])=>[c,l.slice()]);
+  if(isCat){const i=ref,j=i+d;if(j<0||j>=order.length)return;[order[i],order[j]]=[order[j],order[i]]}
+  else{for(const [c,l] of order){const i=l.findIndex(x=>x.id===ref);if(i>=0){const j=i+d;if(j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];break}}}
+  const rows=[];order.forEach(([c,l],gi)=>l.forEach((it,ii)=>{const s=(gi+1)*1000+(ii+1)*10;if(it.sort!==s){it.sort=s;rows.push({id:it.id,category:it.category,name:it.name,price:it.price,sort:s,active:it.active})}}));
+  if(rows.length)await api('/rest/v1/menu_items?on_conflict=id',{method:'POST',body:rows,headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
+  drawMenu();
+}
+
+/* ---------- equipo ---------- */
+function drawTeam(){
+  const roles={admin:'Administrador',camarero:'Camarero',cocina:'Cocina'};
+  $('#view').innerHTML=`<h2>Equipo</h2><p class="hint">Quien se registra con el código del evento aparece aquí. Para echar a alguien, desactívalo: perderá el acceso la próxima vez que su móvil tenga internet.</p>
+  <div class="card"><table><thead><tr><th>NOMBRE</th><th>CORREO</th><th>ROL</th><th>ACTIVO</th></tr></thead><tbody>
+  ${team.map(p=>`<tr data-id="${p.id}"><td>${esc(p.name)}</td><td class="tag">${esc(p.email)}</td>
+    <td><select data-f="role" ${p.id===S.uid?'disabled':''}>${Object.entries(roles).map(([k,l])=>`<option value="${k}" ${p.role===k?'selected':''}>${l}</option>`).join('')}</select></td>
+    <td><label class="sw ${p.active?'on':''}" style="margin:0;letter-spacing:0;font-size:13px;font-weight:500"><input type="checkbox" data-f="active" ${p.active?'checked':''} ${p.id===S.uid?'disabled':''}>${p.active?'Sí':'No'}</label></td></tr>`).join('')}
+  </tbody></table></div>`;
+  $('#view').onchange=async e=>{
+    const t=e.target,tr=t.closest('tr');if(!tr||!t.dataset.f)return;const p=team.find(x=>x.id===tr.dataset.id),f=t.dataset.f,val=f==='active'?t.checked:t.value;
+    try{await api(`/rest/v1/profiles?id=eq.${p.id}`,{method:'PATCH',body:{[f]:val},headers:{Prefer:'return=minimal'}});p[f]=val;toast('Guardado ✓');if(f==='active')drawTeam()}
+    catch(x){toast(x.net?'Sin conexión':x.message,'bad');drawTeam()}
+  };
+}
+
+/* ---------- código de acceso ---------- */
+function drawAccess(){
+  $('#view').innerHTML=`<h2>Código de acceso</h2><p class="hint">Es el código que hay que escribir para crear una cuenta (camareros y cocina). Cámbialo cuando quieras: las cuentas ya creadas siguen funcionando, solo afecta a registros nuevos.</p>
+  <div class="card"><label style="margin-top:0">CÓDIGO ACTUAL</label><input type="text" class="code" id="code" value="${esc(code)}" maxlength="40" autocapitalize="off">
+  <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="save">Guardar código</button><button class="btn" id="gen">Generar uno nuevo</button></div></div>
+  <p class="hint">Cómo se registra el personal: abrir Solera TPV → <b>Crear cuenta</b> → nombre, correo, contraseña, “Camarero” o “Cocina” y este código.</p>`;
+  $('#gen').onclick=()=>{$('#code').value='solera-'+String(Math.floor(Math.random()*10000)).padStart(4,'0')};
+  $('#save').onclick=async()=>{
+    const v=$('#code').value.trim();if(v.length<4){toast('Mínimo 4 caracteres','bad');return}
+    try{await api('/rest/v1/settings?key=eq.access_code',{method:'PATCH',body:{value:v},headers:{Prefer:'return=minimal'}});code=v;toast('Código guardado ✓')}catch(x){toast(x.net?'Sin conexión':x.message,'bad')}
+  };
+}
+
+/* ---------- cocina / barra ---------- */
+function drawKitchen(){
+  $('#view').innerHTML=`<h2>Cocina y barra</h2><p class="hint">Las comandas viajan entre barra y cocina por la red Wi-Fi local, sin pasar por internet. Por eso la cocina se ve <b>en el dispositivo donde esté abierta</b>. Desde aquí puedes abrir cualquiera de los dos modos en este mismo dispositivo (tu sesión de administrador ya vale).</p>
+  <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn pri" style="display:inline-flex;align-items:center" href="/#cocina" onclick="try{localStorage.setItem('zmb.role','cocina')}catch(e){}">Abrir modo COCINA</a><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="/#barra" onclick="try{localStorage.setItem('zmb.role','barra')}catch(e){}">Abrir modo BARRA</a></div>`;
+}
+
+if(S&&S.role==='admin')showApp();else showLogin(S&&S.role!=='admin'?'Inicia sesión con la cuenta de administrador.':'');
+})();
+</script>
+</body>
+</html>

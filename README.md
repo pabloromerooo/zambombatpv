@@ -15,4 +15,12 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v5` → `zmb-v6`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v7` → `zmb-v8`).
+
+## Cuentas y panel de administración
+
+- **Acceso**: al abrir la app hay que iniciar sesión o *Crear cuenta* (nombre, correo, contraseña, Camarero/Cocina y el **código del evento**). La primera vez hace falta internet; después funciona sin conexión (la sesión se recuerda hasta 120 días y se revalida cuando hay red).
+- **Roles**: `camarero` → barra · `cocina` → cocina · `admin` → todo + panel.
+- **Panel**: `/admin` (admin.html). Carta y precios (añadir, editar, agotar, ordenar), equipo (rol/activo), código de acceso y atajos a cocina/barra. Los móviles descargan la carta actualizada cuando tienen internet.
+- **Backend**: Supabase (Auth + tablas `profiles`, `menu_items`, `settings` con RLS + Edge Function `register`). La clave publicable del código es pública por diseño; la seguridad está en RLS.
+- El primer admin es `admin@voldenstudio.com`: regístrate con ese correo desde *Crear cuenta*.
