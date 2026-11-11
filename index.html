@@ -508,7 +508,7 @@ function openDiag(){
 const Net={
   peers:new Map(),bc:null,onMsg:null,seq:0,
   init(onMsg){
-    this.onMsg=onMsg;
+    this.onMsg=onMsg;this.wsInit();
     if('BroadcastChannel' in window){
       try{
         this.bc=new BroadcastChannel('zmb-v1');
@@ -516,8 +516,27 @@ const Net={
       }catch{}
     }
   },
+  /* servidor local (hub): conexión fija que se recupera sola al abrir la app */
+  wsInit(){
+    if(!window.HUB||!('WebSocket' in window)||this.wsOn)return;this.wsOn=true;
+    let delay=600,busy=false;
+    const code=store.get('zmb.hubcode','');
+    const connect=()=>{
+      if(busy||(this.ws&&this.ws.readyState<=1))return;busy=true;
+      let ws;try{ws=new WebSocket(`ws://${location.host}/ws?role=${ROLE}&dev=${DEV}&code=${encodeURIComponent(code)}`)}catch{busy=false;setTimeout(connect,2000);return}
+      ws.onopen=()=>{busy=false;this.ws=ws;delay=600;nlog('✔ servidor local conectado');this.onWsOpen&&this.onWsOpen()};
+      ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}this.onMsg(m,r=>{r.src=ROLE;try{ws.send(JSON.stringify(r))}catch{}})};
+      ws.onclose=()=>{busy=false;if(this.ws===ws){this.ws=null;nlog('✖ servidor local cortado')}setTimeout(connect,delay);delay=Math.min(Math.round(delay*1.6),5000)};
+      ws.onerror=()=>{try{ws.close()}catch{}};
+    };
+    connect();
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')connect()});
+    addEventListener('online',connect);addEventListener('focus',connect);
+  },
+  wsOk(){return !!(this.ws&&this.ws.readyState===1)},
   send(m){
     m.src=ROLE;const s=JSON.stringify(m);
+    if(this.ws&&this.ws.readyState===1){try{this.ws.send(s)}catch{}}
     this.peers.forEach(p=>{if(p.dc&&p.dc.readyState==='open'){try{p.dc.send(s)}catch{}}});
     if(this.bc){try{this.bc.postMessage(m)}catch{}}
   },
@@ -668,7 +687,7 @@ function doLogout(msg){
 }
 /* comprueba en segundo plano (si hay internet) que la cuenta sigue activa y con el mismo rol */
 async function verifySession(){
-  const s=getSess();if(!s)return;
+  const s=getSess();if(!s||s.local)return;
   try{
     const tk=await validToken(s);
     const pr=await sb(`/rest/v1/profiles?id=eq.${s.uid}&select=name,role,active`,{token:tk});
@@ -682,7 +701,36 @@ async function verifySession(){
 const canSwitch=()=>(MODES[(getSess()||{}).role]||[]).length>1;
 const whoLine=()=>{const s=getSess();return s?`<p class="who">Sesión: <b>${esc(s.name)}</b> · ${esc(s.role)}</p>`:''};
 const errEs=m=>/Invalid login/i.test(m)?'Correo o contraseña incorrectos':/rate limit|too many/i.test(m)?'Demasiados intentos. Espera un minuto.':m;
+function showHubLogin(){
+  const flash=store.get('zmb.flash','');store.set('zmb.flash','');
+  $('#app').innerHTML=`<div class="picker">
+    <div class="logo">${BRAND}</div><div class="by">TPV · SERVIDOR LOCAL</div>
+    <form id="lf" novalidate>
+      <label>NOMBRE</label><input name="name" autocomplete="name" maxlength="40" placeholder="Tu nombre">
+      <label>SOY</label><div class="seg"><button type="button" class="sel" data-rl="camarero">Camarero</button><button type="button" data-rl="cocina">Cocina</button></div>
+      <label>CÓDIGO DEL EVENTO</label><input name="code" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="Te lo da el administrador">
+      <div class="st bad" id="lerr" style="margin:10px 0 0;min-height:20px">${esc(flash)}</div>
+      <button class="btn pri full" id="lgo" style="height:56px;font-size:16px;margin-top:6px">Entrar</button>
+    </form></div>`;
+  let role='camarero';const f=$('#lf'),err=$('#lerr'),go=$('#lgo');
+  $$('[data-rl]').forEach(b=>b.onclick=()=>{role=b.dataset.rl;$$('[data-rl]').forEach(x=>x.classList.toggle('sel',x===b))});
+  f.onsubmit=async e=>{
+    e.preventDefault();err.textContent='';const name=f.name.value.trim(),code=f.code.value.trim();
+    if(name.length<2||!code){err.textContent='Escribe tu nombre y el código';return}
+    go.disabled=true;go.textContent='Un momento…';
+    try{
+      const r=await fetch('/api/join?code='+encodeURIComponent(code),{cache:'no-store'});
+      if(!r.ok){err.textContent='Código incorrecto';go.disabled=false;go.textContent='Entrar';return}
+      const uid='local-'+name.toLowerCase().replace(/\W+/g,'-');
+      const s={at:'',rt:'',exp:Date.now()+3e11,uid,name,email:'',role,ver:Date.now(),local:true};
+      store.set('zmb.hubcode',code);
+      if(store.get('zmb.uid','')!==uid){store.set('zmb.uid',uid);store.set('zmb.w',name.slice(0,14));store.set('zmb.cart',{})}
+      saveSess(s);location.hash='';location.reload();
+    }catch{err.textContent='No se encuentra el servidor';go.disabled=false;go.textContent='Entrar'}
+  };
+}
 function showLogin(){
+  if(window.HUB)return showHubLogin();
   const flash=store.get('zmb.flash','');store.set('zmb.flash','');
   $('#app').innerHTML=`<div class="picker">
     <div class="logo">${BRAND}</div><div class="by">TPV · BY VØLDEN</div>
@@ -771,15 +819,25 @@ async function startBar(){
   $('#send').onclick=submitOrder;
   Net.init(bHandle);
   const ping=()=>{Net.send({t:'ping',dev:DEV,w:waiter,open:outstanding().slice(-300).map(o=>o.id)});checkAlive()};
-  setInterval(ping,3000);setInterval(()=>{checkAlive();updatePill()},1000);ping();
+  setInterval(ping,3000);setInterval(()=>{checkAlive();updatePill()},1000);ping();Net.onWsOpen=ping;
   keepAwake();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>{if(!barAlive())toast('Sin conexión con cocina',{kind:'warn',ms:7000,action:['RECONECTAR',barPairing]})},3500)});
   syncMenu();setInterval(syncMenu,120000);addEventListener('online',syncMenu);
   syncCloud();setInterval(syncCloud,30000);addEventListener('online',syncCloud);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncCloud()});
 }
 /* carta en la nube: se descarga cuando hay internet y se guarda en el móvil */
+async function syncHub(){
+  try{
+    const c=await (await fetch('/api/config',{cache:'no-store'})).json();
+    if(c.goal!=null)store.set('zmb.goal',Number(c.goal)||0);if(c.event!=null)store.set('zmb.event',c.event||'');
+    if(Array.isArray(c.menu)&&c.menu.length&&JSON.stringify(c.menu)!==JSON.stringify(MENU)){
+      MENU=c.menu;store.set('zmb.menu',MENU);if(curCat>=MENU.length)curCat=0;
+      if($('#cats')){renderCats();renderGrid();updateCart();toast('Carta actualizada',{kind:'ok',ms:1600})}
+    }
+  }catch{}
+}
 async function syncMenu(){
-  const s=getSess();if(!s)return;
+  const s=getSess();if(!s)return;if(s.local)return syncHub();
   try{
     const tk=await validToken(s);
     try{const st=await sb('/rest/v1/settings?select=key,value&key=in.(goal,event_name)',{token:tk});
@@ -797,7 +855,7 @@ async function syncMenu(){
 /* copia de seguridad: pedidos y arqueos suben a la nube cuando hay internet */
 let syncing=false;
 async function syncCloud(){
-  const s=getSess();if(!s||syncing)return;syncing=true;
+  const s=getSess();if(!s||s.local||syncing)return;syncing=true;
   try{
     const tk=await validToken(s);
     const mk=o=>({id:o.id,dev:DEV,waiter:String(o.w),num:o.num,table_ref:o.tb||null,items:o.items,total:o.total,don:o.don||0,pay:o.pay||null,paid:o.paid!==false,st:o.st,go:o.go||null,ts:o.ts});
@@ -1165,10 +1223,10 @@ async function startKitchen(){
   $$('#kv [data-v]').forEach(x=>x.classList.toggle('sel',x.dataset.v===kview));
   const snd=()=>{$('#bSnd').innerHTML=soundOn?ICON.bell:ICON.bellOff};snd();
   $('#bSnd').onclick=()=>{soundOn=!soundOn;store.set('zmb.sound',soundOn);snd();if(soundOn)ringNew()};
-  document.body.classList.add('kitchen');ensureDock();setTimeout(()=>{if(!kAlive().length)dockSet(true)},1500);
+  document.body.classList.add('kitchen');ensureDock();setTimeout(()=>{if(!kAlive().length&&!window.HUB)dockSet(true)},1500);
   Net.init(kHandle);
   renderKitchen();
-  let lastN=0;setInterval(()=>{tick();kPill();kChip();Net.sweep(60000);const n=kAlive().length;if(n===0&&lastN>0&&dock&&!dock.open){dock.pinned=false;dockSet(true)}lastN=n},1000);kPill();kChip();
+  let lastN=0;setInterval(()=>{tick();kPill();kChip();Net.sweep(60000);const n=kAlive().length;if(n===0&&lastN>0&&dock&&!dock.open&&!window.HUB){dock.pinned=false;dockSet(true)}lastN=n},1000);kPill();kChip();
   syncMenu();setInterval(syncMenu,120000);addEventListener('online',syncMenu);
   keepAwake();
   toast('Toca cualquier botón una vez para activar el sonido',{kind:'warn',ms:4000});
@@ -1287,6 +1345,15 @@ function openMsg(toDev,tag){
   $$('[data-t]',m).forEach(b=>b.onclick=()=>send(b.dataset.t));
   $('[data-ok]',m).onclick=()=>send($('.ninp',m).value.trim());
 }
+/* ---------- enlace del servidor local para los móviles ---------- */
+async function openLink(){
+  let i={ips:[],port:8787};try{i=await (await fetch('/api/info',{cache:'no-store'})).json()}catch{}
+  const urls=i.ips.map(ip=>`http://${ip}:${i.port}`);
+  const m=modal(`<h2>Enlace para los móviles</h2><p class="hint" style="margin-top:0">Con el Wi-Fi del evento activado, los camareros abren este enlace (o escanean el QR con la cámara del móvil), entran con su nombre y el código del evento y se quedan conectados aunque cierren la app.</p>
+    ${urls.map((u,k)=>`<div class="qrbox" style="max-width:240px"><canvas data-q="${k}"></canvas></div><p style="text-align:center;font-size:20px;font-weight:700;margin:6px 0 16px;word-break:break-all">${esc(u)}</p>`).join('')||'<p class="hint">No hay red Wi-Fi activa en esta tablet.</p>'}
+    <p class="hint">Conectados ahora: ${(i.clients||[]).filter(c=>c.role==='barra').length} móvil(es).</p>`);
+  urls.forEach((u,k)=>drawQR($(`[data-q="${k}"]`,m),u));
+}
 /* ---------- agotados en vivo ---------- */
 function openSold(){
   const m=modal(`<h2>🚫 Agotados</h2><p class="hint" style="margin-top:0">Toca lo que se ha acabado: desaparece al momento de todos los móviles conectados.</p>
@@ -1304,6 +1371,7 @@ function recentList(){
 function kMenu(){
   const m=modal(`<h2>Menú cocina</h2>${whoLine()}
     <button class="mrow" data-a="net"><i>${ICON.wifi}</i>Conectar camareros</button>
+    ${window.HUB?`<button class="mrow" data-a="link"><i>${ICON.wifi}</i>Enlace para los móviles (servidor local)</button>`:''}
     <button class="mrow" data-a="qr"><i>${ICON.qr}</i>Recibir pedidos por QR (sin red)</button>
     <button class="mrow" data-a="diag"><i>${ICON.wifi}</i>Diagnóstico de conexión</button>
     <button class="mrow" data-a="sold"><i>${ICON.x}</i>Agotados</button>
@@ -1316,7 +1384,7 @@ function kMenu(){
   $$('[data-a]',m).forEach(b=>b.onclick=()=>{
     const a=b.dataset.a;m.close();
     if(a==='admin')location.href='/admin';else if(a==='out')confirmBox('Para volver a entrar necesitarás internet.','CERRAR SESIÓN',()=>doLogout());
-    else if(a==='net')hostPairing();else if(a==='qr')qrReceive();else if(a==='diag')openDiag();else if(a==='sold')openSold();else if(a==='msg')openMsg();else if(a==='score')openScore(kScore);
+    else if(a==='net')hostPairing();else if(a==='qr')qrReceive();else if(a==='link')openLink();else if(a==='diag')openDiag();else if(a==='sold')openSold();else if(a==='msg')openMsg();else if(a==='score')openScore(kScore);
     else if(a==='caja')openReport(orders,'COCINA · todos los pedidos recibidos',`Pendientes de entregar: ${orders.filter(o=>o.st==='new').length}`);
     else if(a==='role')changeRole();
     else if(a==='reset')confirmBox('Se borrarán TODAS las comandas de la cocina y el contador volverá a #001. Descarga antes el cierre de caja.','BORRAR TODO',async()=>{await DB.clear();orders=[];byId.clear();nextNum=1;renderKitchen();toast('Datos borrados',{kind:'warn'})});

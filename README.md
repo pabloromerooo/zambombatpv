@@ -15,7 +15,7 @@ Web app de un solo archivo para comandas de un evento: **barra** (móviles) y **
 Si no hay cámara, hay un código de texto alternativo. Los pedidos hechos sin conexión quedan en cola y se envían solos al reconectar.
 
 ## Actualizar
-Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v15` → `zmb-v16`).
+Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v16` → `zmb-v17`).
 
 ## Cuentas y panel de administración
 
@@ -50,3 +50,7 @@ Al cambiar `index.html`, subir el número de versión `V` en `sw.js` (`zmb-v15` 
 - Android: apaga "Cambio automático de red" / "Smart network switch" y, si sale "Wi‑Fi sin internet", elige **mantener conexión**. Quita el ahorro de batería del navegador y del hotspot.
 - iPhone: instala la app en la pantalla de inicio, ponla en **Ajustes → Pantalla → Bloqueo automático: Nunca** durante el servicio y no cambies de app.
 - Tablet de cocina: siempre enchufada, brillo bajo, sin pasar a otra app.
+
+## Servidor local (conexión fija)
+
+Para que barra y cocina no se desconecten nunca, la tablet puede ejecutar un pequeño servidor (`hub/`). Ver [hub/README.md](hub/README.md).

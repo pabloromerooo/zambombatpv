@@ -1,5 +1,5 @@
 // Sube el número cuando cambies index.html para forzar la actualización en los móviles
-const V='zmb-v15',FILES=['./','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png'];
+const V='zmb-v16',FILES=['./','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png'];
 // Safari/Chrome rechazan servir desde un service worker una respuesta que venga de una redirección
 // (p. ej. Cloudflare redirige /index.html -> /). Se devuelve siempre una copia "limpia".
 const clean=async r=>{
@@ -20,7 +20,7 @@ self.addEventListener('activate',e=>{
 self.addEventListener('fetch',e=>{
   const req=e.request;if(req.method!=='GET')return;
   const u=new URL(req.url);
-  if(u.origin!==location.origin||u.pathname.startsWith('/admin'))return; // API de Supabase y panel admin: siempre red, sin caché
+  if(u.origin!==location.origin||u.pathname.startsWith('/admin')||u.pathname.startsWith('/api')||u.pathname.startsWith('/ws'))return; // API de Supabase y panel admin: siempre red, sin caché
   const key=req.mode==='navigate'?'./':req; // cualquier navegación sirve la app (index) sin redirecciones
   e.respondWith((async()=>{
     try{
