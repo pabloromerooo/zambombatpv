@@ -196,7 +196,7 @@ async function move(g,ref,d,isCat){
 
 /* ---------- equipo ---------- */
 function drawTeam(){
-  const roles={admin:'Administrador',camarero:'Camarero',cocina:'Cocina'};
+  const roles={admin:'Administrador',camarero:'Camarero',cocina:'Cocina',caja:'Caja'};
   $('#view').innerHTML=`<h2>Equipo</h2><p class="hint">Quien se registra con el código del evento aparece aquí. Para echar a alguien, desactívalo: perderá el acceso la próxima vez que su móvil tenga internet.</p>
   <div class="card"><table><thead><tr><th>NOMBRE</th><th>CORREO</th><th>ROL</th><th>ACTIVO</th></tr></thead><tbody>
   ${team.map(p=>`<tr data-id="${p.id}"><td>${esc(p.name)}</td><td class="tag">${esc(p.email)}</td>

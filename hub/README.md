@@ -24,6 +24,12 @@ Si el servidor no está, la app sigue funcionando como siempre con el emparejami
 4. Los camareros escanean ese QR con la cámara del móvil (o escriben la dirección), entran con su nombre y el código, y listo.
    Para tenerla a mano: *Añadir a pantalla de inicio*.
 
+## Caja (efectivo)
+
+- Las 2 personas de caja entran con su nombre y el código, eligiendo **Caja** (o con una cuenta de rol Caja creada en `/admin` → Equipo).
+- Cada pedido en efectivo les aparece solo, con lo que hay que cobrar, lo que dan y **la vuelta a preparar**. Solo caja puede cerrarlo (**COBRADO**); la tarjeta se da por cobrada al momento.
+- La caja necesita el servidor local: sin él no recibe los pedidos.
+
 ## Notas
 
 - La tablet debe estar enchufada y con Termux abierto (`start.sh` usa `termux-wake-lock`). Desactiva el ahorro de batería de Termux.

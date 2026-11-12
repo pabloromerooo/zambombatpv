@@ -46,7 +46,7 @@ server.on('upgrade',(req,socket)=>{
   const key=req.headers['sec-websocket-key'];
   if(u.pathname!=='/ws'||!key){socket.destroy();return}
   if(!same(u.searchParams.get('code')||'',CODE())){socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');return}
-  const role=u.searchParams.get('role')==='cocina'?'cocina':'barra',dev=(u.searchParams.get('dev')||'?').slice(0,12);
+  const rq=u.searchParams.get('role'),role=['cocina','caja'].includes(rq)?rq:'barra',dev=(u.searchParams.get('dev')||'?').slice(0,12);
   const accept=crypto.createHash('sha1').update(key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+accept+'\r\n\r\n');
   socket.setNoDelay(true);socket.setKeepAlive(true,15000);
@@ -55,7 +55,7 @@ server.on('upgrade',(req,socket)=>{
   if(role==='barra'){const now=Date.now();recent=recent.filter(x=>now-x.t<120000);recent.forEach(x=>wsSend(c,x.raw))}
   const relay=raw=>{
     if(role==='cocina'){try{const m=JSON.parse(raw);if(m.t==='msg'){recent.push({t:Date.now(),raw});recent=recent.slice(-20)}}catch{}}
-    clients.forEach(o=>{if(o!==c&&o.role!==role)wsSend(o,raw)});
+    clients.forEach(o=>{if(o!==c&&(role==='caja'||o.role!==role))wsSend(o,raw)});
   };
   const onData=d=>{
     c.buf=Buffer.concat([c.buf,d]);
