@@ -576,14 +576,15 @@ const Net={
   /* servidor local (hub): conexión fija que se recupera sola al abrir la app */
   wsInit(){
     if(!window.HUB||!('WebSocket' in window)||this.wsOn)return;this.wsOn=true;
-    let delay=600,busy=false;
+    let delay=600,busy=false,hi=0,fails=0;
     const code=store.get('zmb.hubcode','');
+    const hostsL=()=>{const L=[location.host];(store.get('zmb.hubpeers',[])||[]).forEach(x=>{if(!L.includes(x))L.push(x)});return L};
     const connect=()=>{
       if(busy||(this.ws&&this.ws.readyState<=1))return;busy=true;
-      let ws;try{ws=new WebSocket(`ws://${location.host}/ws?role=${ROLE}&dev=${DEV}&code=${encodeURIComponent(code)}`)}catch{busy=false;setTimeout(connect,2000);return}
-      ws.onopen=()=>{busy=false;this.ws=ws;delay=600;nlog('✔ servidor local conectado');this.onWsOpen&&this.onWsOpen()};
+      let ws,opened=false;const HL=hostsL(),host=HL[hi%HL.length];try{ws=new WebSocket(`ws://${host}/ws?role=${ROLE}&dev=${DEV}&code=${encodeURIComponent(code)}`)}catch{busy=false;setTimeout(connect,2000);return}
+      ws.onopen=()=>{opened=true;fails=0;busy=false;this.ws=ws;delay=600;nlog('✔ servidor local conectado'+(host!==location.host?' ('+host+')':''));this.onWsOpen&&this.onWsOpen()};
       ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}this.onMsg(m,r=>{r.src=ROLE;try{ws.send(JSON.stringify(r))}catch{}})};
-      ws.onclose=()=>{busy=false;if(this.ws===ws){this.ws=null;nlog('✖ servidor local cortado')}setTimeout(connect,delay);delay=Math.min(Math.round(delay*1.6),5000)};
+      ws.onclose=()=>{busy=false;if(!opened&&++fails>=2){fails=0;hi++;nlog('→ probando otro servidor')}if(this.ws===ws){this.ws=null;nlog('✖ servidor local cortado')}setTimeout(connect,delay);delay=Math.min(Math.round(delay*1.6),5000)};
       ws.onerror=()=>{try{ws.close()}catch{}};
     };
     connect();
@@ -890,6 +891,7 @@ async function startBar(){
 async function syncHub(){
   try{
     const c=await (await fetch('/api/config',{cache:'no-store'})).json();
+    try{const inf=await (await fetch('/api/info',{cache:'no-store'})).json();if(Array.isArray(inf.peers))store.set('zmb.hubpeers',inf.peers)}catch{}
     if(c.goal!=null)store.set('zmb.goal',Number(c.goal)||0);if(c.event!=null)store.set('zmb.event',c.event||'');
     if(Array.isArray(c.menu)&&c.menu.length&&JSON.stringify(c.menu)!==JSON.stringify(MENU)){
       MENU=c.menu;store.set('zmb.menu',MENU);if(curCat>=MENU.length)curCat=0;
@@ -1668,6 +1670,7 @@ async function startCaja(){
   $('#btnMenu').onclick=cMenu;
   Net.init(cHandle);cRender();
   setInterval(cRender,30000);setInterval(cPill,1000);keepAwake();
+  if(window.HUB){syncHub();setInterval(syncHub,120000)}
 }
 (async()=>{
   let S=getSess();

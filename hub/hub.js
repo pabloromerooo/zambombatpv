@@ -11,6 +11,7 @@ const ROOT=path.resolve(__dirname,'..'),DATA=path.join(__dirname,'data'),CFG=pat
 const PORT=+(arg('--port',process.env.PORT||8787));
 const cfg=()=>{try{return JSON.parse(fs.readFileSync(CFG,'utf8'))}catch{return{}}};
 const CODE=()=>String(arg('--code',process.env.HUB_CODE||cfg().code||'solera'));
+const PEERS=()=>String(arg('--peers',process.env.HUB_PEERS||[].concat(cfg().peers||[]).join(','))).split(',').map(s=>s.trim()).filter(Boolean);
 const same=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)};
 const MIME={'.html':'text/html; charset=utf-8','.json':'application/json','.js':'text/javascript','.png':'image/png'};
 const ips=()=>Object.values(os.networkInterfaces()).flat().filter(i=>i&&i.family==='IPv4'&&!i.internal).map(i=>i.address);
@@ -21,7 +22,7 @@ const server=http.createServer((req,res)=>{
   const u=new URL(req.url,'http://x'),p=u.pathname;
   if(p==='/api/join'){return same(u.searchParams.get('code')||'',CODE())?send(res,200,JSON.stringify({ok:true,event:cfg().event||''})):send(res,401,'{"error":"código incorrecto"}')}
   if(p==='/api/config'){const c=cfg();return send(res,200,JSON.stringify({menu:c.menu||null,goal:c.goal||0,event:c.event||''}))}
-  if(p==='/api/info')return send(res,200,JSON.stringify({ips:ips(),port:PORT,clients:[...clients].map(c=>({role:c.role,dev:c.dev}))}));
+  if(p==='/api/info')return send(res,200,JSON.stringify({ips:ips(),port:PORT,clients:[...clients].filter(c=>c.role!=='hub').map(c=>({role:c.role,dev:c.dev})),peers:PEERS(),self:ips().map(i=>i+':'+PORT)}));
   if(p==='/api/ping')return send(res,200,'{"ok":true}');
   const m=p.match(/^\/(index\.html|manifest\.json|sw\.js|[\w-]+\.png)?$/);
   if(!m)return send(res,404,'no');
@@ -41,21 +42,46 @@ const frame=(op,payload)=>{
   return Buffer.concat([h,b]);
 };
 const wsSend=(c,s)=>{try{c.socket.write(frame(1,s))}catch{}};
+/* ---- enlace entre servidores: reenvían los mensajes entre sí (con deduplicado) ---- */
+const HID=crypto.randomBytes(4).toString('hex');let SEQ=0;const seen=new Set(),peers=new Set();
+const mark=id=>{seen.add(id);if(seen.size>6000){const it=seen.values();for(let i=0;i<2000;i++)seen.delete(it.next().value)}};
+const toPeers=raw=>{const id=HID+(++SEQ);mark(id);const w=JSON.stringify({h:id,m:raw});peers.forEach(p=>p.send(w))};
+const deliverLocal=(raw,src,except)=>clients.forEach(o=>{if(o!==except&&o.role!=='hub'&&(src==='caja'||o.role!==src))wsSend(o,raw)});
+const noteRecent=(raw,src)=>{if(src==='cocina'){try{const m=JSON.parse(raw);if(m.t==='msg'){recent.push({t:Date.now(),raw});recent=recent.slice(-20)}}catch{}}};
+function fromPeer(w,p){
+  let o;try{o=JSON.parse(w)}catch{return}
+  if(!o||!o.h||seen.has(o.h))return;mark(o.h);
+  let src='barra';try{src=JSON.parse(o.m).src||'barra'}catch{}
+  noteRecent(o.m,src);deliverLocal(o.m,src,null);
+  peers.forEach(q=>{if(q!==p)q.send(w)});
+}
+function link(addr){
+  if(typeof WebSocket==='undefined'){log('⚠ Este Node no admite enlazar servidores (hace falta Node 22 o superior)');return}
+  const go=()=>{
+    let ws;try{ws=new WebSocket(`ws://${addr}/ws?role=hub&dev=${HID}&code=${encodeURIComponent(CODE())}`)}catch{setTimeout(go,3000);return}
+    const p={send:s=>{try{if(ws.readyState===1)ws.send(s)}catch{}}};
+    ws.onopen=()=>{peers.add(p);log('⇄ enlazado con el servidor',addr)};
+    ws.onmessage=e=>fromPeer(String(e.data),p);
+    ws.onclose=()=>{if(peers.delete(p))log('⇄ enlace perdido con',addr);setTimeout(go,3000)};
+    ws.onerror=()=>{try{ws.close()}catch{}};
+  };go();
+}
 server.on('upgrade',(req,socket)=>{
   const u=new URL(req.url,'http://x');
   const key=req.headers['sec-websocket-key'];
   if(u.pathname!=='/ws'||!key){socket.destroy();return}
   if(!same(u.searchParams.get('code')||'',CODE())){socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');return}
-  const rq=u.searchParams.get('role'),role=['cocina','caja'].includes(rq)?rq:'barra',dev=(u.searchParams.get('dev')||'?').slice(0,12);
+  const rq=u.searchParams.get('role'),role=['cocina','caja','hub'].includes(rq)?rq:'barra',dev=(u.searchParams.get('dev')||'?').slice(0,12);
   const accept=crypto.createHash('sha1').update(key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+accept+'\r\n\r\n');
   socket.setNoDelay(true);socket.setKeepAlive(true,15000);
   const c={socket,role,dev,buf:Buffer.alloc(0),frag:[],alive:Date.now()};
   clients.add(c);log('＋',role,dev,'· conectados:',clients.size);
   if(role==='barra'){const now=Date.now();recent=recent.filter(x=>now-x.t<120000);recent.forEach(x=>wsSend(c,x.raw))}
+  const pobj={send:s=>wsSend(c,s)};if(role==='hub')peers.add(pobj);
   const relay=raw=>{
-    if(role==='cocina'){try{const m=JSON.parse(raw);if(m.t==='msg'){recent.push({t:Date.now(),raw});recent=recent.slice(-20)}}catch{}}
-    clients.forEach(o=>{if(o!==c&&(role==='caja'||o.role!==role))wsSend(o,raw)});
+    if(role==='hub'){fromPeer(raw,pobj);return}
+    noteRecent(raw,role);deliverLocal(raw,role,c);toPeers(raw);
   };
   const onData=d=>{
     c.buf=Buffer.concat([c.buf,d]);
@@ -77,7 +103,7 @@ server.on('upgrade',(req,socket)=>{
       }
     }
   };
-  const bye=()=>{if(clients.delete(c))log('－',role,dev,'· conectados:',clients.size)};
+  const bye=()=>{peers.delete(pobj);if(clients.delete(c))log('－',role,dev,'· conectados:',clients.size)};
   socket.on('data',onData);socket.on('close',bye);socket.on('error',()=>{bye();socket.destroy()});
 });
 setInterval(()=>{const now=Date.now();clients.forEach(c=>{if(now-c.alive>60000){c.socket.destroy();return}try{c.socket.write(frame(9,'k'))}catch{}})},20000);
@@ -87,4 +113,5 @@ server.listen(PORT,'0.0.0.0',()=>{
   console.log('  Código del evento:',CODE());
   console.log('  Móviles (camareros) →',ips().map(i=>`http://${i}:${PORT}`).join('   ')||'(sin red Wi-Fi todavía)');
   console.log('  Esta tablet (cocina) → http://localhost:'+PORT+'\n');
+  PEERS().forEach(a=>{console.log('  Enlazando con el servidor',a);link(a)});
 });

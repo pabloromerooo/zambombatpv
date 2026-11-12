@@ -30,6 +30,20 @@ Si el servidor no está, la app sigue funcionando como siempre con el emparejami
 - Cada pedido en efectivo les aparece solo, con lo que hay que cobrar, lo que dan y **la vuelta a preparar**. Solo caja puede cerrarlo (**COBRADO**); la tarjeta se da por cobrada al momento.
 - La caja necesita el servidor local: sin él no recibe los pedidos.
 
+## Dos servidores a la vez (por si uno falla)
+
+Puedes tener dos (o más) ordenadores con el servidor encendido. Se reenvían los mensajes entre ellos y, si uno se cae, los móviles, cocina y caja saltan solos al otro.
+
+1. Prepara los dos igual (`node pull.js ...`) y conéctalos al mismo Wi-Fi.
+2. Al arrancar cada uno te muestra su dirección (`192.168.x.x:8787`). Arranca cada uno diciéndole la dirección del otro:
+   ```
+   node hub.js --peers IP_DEL_OTRO:8787
+   ```
+   (en Termux: `sh start.sh --peers IP_DEL_OTRO:8787`). Verás "enlazado con el servidor ...".
+3. Cada dispositivo entra por cualquiera de los dos. Al cargar la app aprende la dirección del otro y, si el suyo falla, cambia solo en unos segundos.
+4. Si recargas la app con su servidor caído, tienes que abrir la dirección del que siga vivo.
+5. Hace falta Node 22 o superior en los dos. Con un router, reserva una IP fija para cada ordenador para que las direcciones no cambien.
+
 ## Notas
 
 - La tablet debe estar enchufada y con Termux abierto (`start.sh` usa `termux-wake-lock`). Desactiva el ahorro de batería de Termux.
