@@ -189,6 +189,8 @@ details{margin-top:14px}summary{color:var(--mut);font-size:13px;padding:8px 0;cu
 .payb i{font-size:38px;width:auto;line-height:1}
 .payb.efectivo{background:rgba(63,191,139,.14);border-color:rgba(63,191,139,.55);color:#9be8c6}
 .payb.tarjeta{background:rgba(110,160,255,.14);border-color:rgba(110,160,255,.55);color:#b4cdff}
+.payb.bizum{background:rgba(5,195,192,.13);border-color:rgba(5,195,192,.55);color:#8ceceb}
+.payg{grid-template-columns:repeat(3,1fr);gap:9px}.payg .payb{font-size:16px;height:116px}.payg .payb i{font-size:34px}
 .payb:active{transform:scale(.97)}
 .paytot{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:800;font-size:54px;letter-spacing:-.03em;margin:4px 0 20px}
 .qa{grid-template-columns:repeat(2,1fr)!important;gap:10px;margin:10px 0}
@@ -1023,7 +1025,7 @@ function setSold(list){
     if(added.length)toast('Agotado: '+added.map(esc).join(', ')+(lost?' (quitado de tu pedido)':''),{kind:'warn',ms:4000});
   }
 }
-const PAYS={efectivo:['Efectivo','💶'],tarjeta:['Tarjeta','💳']};
+const PAYS={efectivo:['Efectivo','💶'],tarjeta:['Tarjeta','💳'],bizum:['Bizum','📱']};
 const givenOf=(o,i)=>(o.g&&o.g[i])||0;
 const isDrink=it=>(it.k||'c')==='b';
 const itemDone=(o,i)=>givenOf(o,i)>=o.items[i].q||(!isDrink(o.items[i])&&o.st==='done');
@@ -1186,7 +1188,7 @@ function barDrinks(tab='pen'){
   done.sort((a,b)=>b.t-a.t);
   const nP=P.reduce((s,x)=>s+x.rows.reduce((a,r)=>a+r.rem,0),0),nD=done.reduce((s,d)=>s+d.g,0);
   const tag=o=>`<b>${o.num!=null?'#'+pad(o.num):'···'}</b>${o.tb?`<span class="tbtag">${esc(o.tb)}</span>`:''}`;
-  const vuelta=o=>o.pay==='efectivo'&&o.gv?`<span>💶 vuelta ${eur(Math.max(0,R2(o.gv-o.total-(o.don||0))))}</span>`:(o.pay==='tarjeta'?'<span>💳</span>':'');
+  const vuelta=o=>o.pay==='efectivo'&&o.gv?`<span>💶 vuelta ${eur(Math.max(0,R2(o.gv-o.total-(o.don||0))))}</span>`:(o.pay&&o.pay!=='efectivo'&&PAYS[o.pay]?`<span>${PAYS[o.pay][1]}</span>`:'');
   const pen=P.map(({o,rows})=>`<div class="dr-card" data-o="${o.id}"><div class="dr-h">${tag(o)}${vuelta(o)}<span style="flex:1"></span><button class="btn" data-all style="min-height:38px;padding:0 14px;font-size:13px">Todo ✔</button></div>${rows.map(r=>`<button class="dr-row" data-i="${r.i}"><span class="q">${r.rem}</span><span>${esc(r.it.n)}${r.it.x?`<small>✎ ${esc(r.it.x)}</small>`:''}</span></button>`).join('')}</div>`).join('');
   const dn=done.map(d=>`<button class="dr-row done" data-o="${d.o.id}" data-i="${d.i}"><span class="q">${d.g}</span><span>${esc(d.it.n)}<small style="color:var(--mut)">${d.o.num!=null?'#'+pad(d.o.num):'···'}${d.o.tb?' · '+esc(d.o.tb):''}</small></span><span style="margin-left:auto;color:var(--mut);font-size:13px;font-weight:500">↩ deshacer</span></button>`).join('');
   const m=modal(`<h2>Bebidas</h2><div class="seg" style="margin-bottom:10px"><button class="${tab==='pen'?'sel':''}" data-tab="pen">Pendientes (${nP})</button><button class="${tab==='don'?'sel':''}" data-tab="don">Hechas (${nD})</button></div>
