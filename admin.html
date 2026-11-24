@@ -126,7 +126,7 @@ async function draw(){
   try{
     if(tab==='ventas'){await drawSales();return}
     if(tab==='carta'){items=await api('/rest/v1/menu_items?select=*&order=sort.asc');drawMenu()}
-    else if(tab==='equipo'){team=await api('/rest/v1/profiles?select=id,name,email,role,active,created_at&order=created_at.asc');drawTeam()}
+    else if(tab==='equipo'){team=await api('/rest/v1/profiles?select=id,name,email,role,active,bizum,created_at&order=created_at.asc');drawTeam()}
     else if(tab==='acceso'){const r=await api('/rest/v1/settings?select=key,value&key=in.(access_code,goal,event_name)');code='';goal=0;evName='';(r||[]).forEach(x=>{if(x.key==='access_code')code=x.value;if(x.key==='goal')goal=Number(x.value)||0;if(x.key==='event_name')evName=x.value||''});drawAccess()}
     else drawKitchen();
   }catch(e){
@@ -197,15 +197,16 @@ async function move(g,ref,d,isCat){
 /* ---------- equipo ---------- */
 function drawTeam(){
   const roles={admin:'Administrador',camarero:'Camarero',cocina:'Cocina',caja:'Caja'};
-  $('#view').innerHTML=`<h2>Equipo</h2><p class="hint">Quien se registra con el código del evento aparece aquí. Para echar a alguien, desactívalo: perderá el acceso la próxima vez que su móvil tenga internet.</p>
-  <div class="card"><table><thead><tr><th>NOMBRE</th><th>CORREO</th><th>ROL</th><th>ACTIVO</th></tr></thead><tbody>
+  $('#view').innerHTML=`<h2>Equipo</h2><p class="hint">Quien se registra con el código del evento aparece aquí. Para echar a alguien, desactívalo: perderá el acceso la próxima vez que su móvil tenga internet. <b>Bizum</b>: solo los camareros con el interruptor en «Sí» verán ese método de cobro (tendrán que volver a abrir sesión o tener internet para que se aplique).</p>
+  <div class="card"><table><thead><tr><th>NOMBRE</th><th>CORREO</th><th>ROL</th><th>ACTIVO</th><th>BIZUM</th></tr></thead><tbody>
   ${team.map(p=>`<tr data-id="${p.id}"><td>${esc(p.name)}</td><td class="tag">${esc(p.email)}</td>
     <td><select data-f="role" ${p.id===S.uid?'disabled':''}>${Object.entries(roles).map(([k,l])=>`<option value="${k}" ${p.role===k?'selected':''}>${l}</option>`).join('')}</select></td>
-    <td><label class="sw ${p.active?'on':''}" style="margin:0;letter-spacing:0;font-size:13px;font-weight:500"><input type="checkbox" data-f="active" ${p.active?'checked':''} ${p.id===S.uid?'disabled':''}>${p.active?'Sí':'No'}</label></td></tr>`).join('')}
+    <td><label class="sw ${p.active?'on':''}" style="margin:0;letter-spacing:0;font-size:13px;font-weight:500"><input type="checkbox" data-f="active" ${p.active?'checked':''} ${p.id===S.uid?'disabled':''}>${p.active?'Sí':'No'}</label></td>
+    <td>${p.role==='camarero'?`<label class="sw ${p.bizum?'on':''}" style="margin:0;letter-spacing:0;font-size:13px;font-weight:500"><input type="checkbox" data-f="bizum" ${p.bizum?'checked':''}>${p.bizum?'Sí':'No'}</label>`:'<span class="tag">'+(p.role==='admin'?'siempre':'—')+'</span>'}</td></tr>`).join('')}
   </tbody></table></div>`;
   $('#view').onchange=async e=>{
-    const t=e.target,tr=t.closest('tr');if(!tr||!t.dataset.f)return;const p=team.find(x=>x.id===tr.dataset.id),f=t.dataset.f,val=f==='active'?t.checked:t.value;
-    try{await api(`/rest/v1/profiles?id=eq.${p.id}`,{method:'PATCH',body:{[f]:val},headers:{Prefer:'return=minimal'}});p[f]=val;toast('Guardado ✓');if(f==='active')drawTeam()}
+    const t=e.target,tr=t.closest('tr');if(!tr||!t.dataset.f)return;const p=team.find(x=>x.id===tr.dataset.id),f=t.dataset.f,val=(f==='active'||f==='bizum')?t.checked:t.value;
+    try{await api(`/rest/v1/profiles?id=eq.${p.id}`,{method:'PATCH',body:{[f]:val},headers:{Prefer:'return=minimal'}});p[f]=val;toast('Guardado ✓');if(f==='active'||f==='bizum')drawTeam()}
     catch(x){toast(x.net?'Sin conexión':x.message,'bad');drawTeam()}
   };
 }

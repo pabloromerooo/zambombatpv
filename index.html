@@ -727,11 +727,11 @@ async function sb(path,{method='GET',body,token,timeout=7000}={}){
   }catch(e){if(e.status===undefined)e.net=true;throw e}finally{clearTimeout(t)}
 }
 async function finishLogin(j){
-  const pr=await sb(`/rest/v1/profiles?id=eq.${j.user.id}&select=name,email,role,active`,{token:j.access_token});
+  const pr=await sb(`/rest/v1/profiles?id=eq.${j.user.id}&select=name,email,role,active,bizum`,{token:j.access_token});
   const p=pr&&pr[0];
   if(!p)throw new Error('Tu cuenta no tiene perfil. Habla con el administrador.');
   if(!p.active)throw new Error('Tu cuenta está desactivada. Habla con el administrador.');
-  const s={at:j.access_token,rt:j.refresh_token,exp:Date.now()+j.expires_in*1000,uid:j.user.id,name:p.name,email:p.email,role:p.role,ver:Date.now()};
+  const s={at:j.access_token,rt:j.refresh_token,exp:Date.now()+j.expires_in*1000,uid:j.user.id,name:p.name,email:p.email,role:p.role,bizum:!!p.bizum,ver:Date.now()};
   saveSess(s);return s;
 }
 const authLogin=(email,password)=>sb('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password}}).then(finishLogin);
@@ -750,11 +750,11 @@ async function verifySession(){
   const s=getSess();if(!s||s.local)return;
   try{
     const tk=await validToken(s);
-    const pr=await sb(`/rest/v1/profiles?id=eq.${s.uid}&select=name,role,active`,{token:tk});
+    const pr=await sb(`/rest/v1/profiles?id=eq.${s.uid}&select=name,role,active,bizum`,{token:tk});
     const p=pr&&pr[0];
     if(!p||!p.active){doLogout('Tu cuenta ha sido desactivada.');return}
     const changed=p.role!==s.role;
-    s.name=p.name;s.role=p.role;s.ver=Date.now();saveSess(s);
+    s.name=p.name;s.role=p.role;s.bizum=!!p.bizum;s.ver=Date.now();saveSess(s);
     if(changed&&!orders.some(o=>o.st==='queued'||o.st==='sent'||o.st==='new'))location.reload();
   }catch(e){/* errores transitorios: se ignoran; nunca recargar en pleno servicio */}
 }
@@ -780,10 +780,11 @@ function showHubLogin(){
     if(name.length<2||!code){err.textContent='Escribe tu nombre y el código';return}
     go.disabled=true;go.textContent='Un momento…';
     try{
-      const r=await fetch('/api/join?code='+encodeURIComponent(code),{cache:'no-store'});
+      const r=await fetch('/api/join?code='+encodeURIComponent(code)+'&name='+encodeURIComponent(name),{cache:'no-store'});
       if(!r.ok){err.textContent='Código incorrecto';$('#cwrap').style.display='';go.disabled=false;go.textContent='Entrar';return}
       const uid='local-'+name.toLowerCase().replace(/\W+/g,'-');
-      const s={at:'',rt:'',exp:Date.now()+3e11,uid,name,email:'',role,ver:Date.now(),local:true};
+      let jb={};try{jb=await r.json()}catch{}
+      const s={at:'',rt:'',exp:Date.now()+3e11,uid,name,email:'',role,ver:Date.now(),local:true,bizum:!!jb.bizum};
       store.set('zmb.hubcode',code);
       if(store.get('zmb.uid','')!==uid){store.set('zmb.uid',uid);store.set('zmb.w',name.slice(0,14));store.set('zmb.cart',{})}
       saveSess(s);history.replaceState(null,'',location.pathname);location.hash='';location.reload();
@@ -1026,6 +1027,7 @@ function setSold(list){
   }
 }
 const PAYS={efectivo:['Efectivo','💶'],tarjeta:['Tarjeta','💳'],bizum:['Bizum','📱']};
+const bizumOK=()=>{const s=getSess()||{};return s.role==='admin'||!!s.bizum};
 const givenOf=(o,i)=>(o.g&&o.g[i])||0;
 const isDrink=it=>(it.k||'c')==='b';
 const itemDone=(o,i)=>givenOf(o,i)>=o.items[i].q||(!isDrink(o.items[i])&&o.st==='done');
@@ -1043,7 +1045,7 @@ function askPay(total,onPick){
   const m=modal(`<h2>Cobrar</h2><div class="paytot" data-t>${eur(total)}</div>
     <input class="ninp" data-tb maxlength="14" placeholder="Mesa o nombre (opcional)" style="margin-bottom:6px">
     <label>DONATIVO (opcional)</label><div class="nchips" data-d>${opts.map((d,i)=>`<button class="nchip ${d===0?'sel':''}" data-v="${d}">${lab(d,i)}</button>`).join('')}</div>
-    <div class="payg">${Object.entries(PAYS).map(([k,[l,ic]])=>`<button class="payb ${k}" data-p="${k}"><i>${ic}</i>${l}</button>`).join('')}</div>`);
+    <div class="payg" style="grid-template-columns:repeat(${Object.keys(PAYS).filter(k=>k!=='bizum'||bizumOK()).length},1fr)">${Object.entries(PAYS).filter(([k])=>k!=='bizum'||bizumOK()).map(([k,[l,ic]])=>`<button class="payb ${k}" data-p="${k}"><i>${ic}</i>${l}</button>`).join('')}</div>`);
   const tbv=()=>$('[data-tb]',m)?$('[data-tb]',m).value.trim():'';let tbs='';
   $$('[data-v]',m).forEach(b=>b.onclick=()=>{don=+b.dataset.v;$$('[data-v]',m).forEach(x=>x.classList.toggle('sel',x===b));$('[data-t]',m).textContent=eur(total+don);buzz(8)});
   const pick=(k,gv)=>{m.onclose=null;m.close();onPick({pay:k,don,tb:tbs,gv:gv||0})};

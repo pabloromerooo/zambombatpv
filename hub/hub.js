@@ -20,7 +20,7 @@ const log=(...a)=>console.log(new Date().toLocaleTimeString('es-ES'),...a);
 const send=(res,code,body,type='application/json')=>{res.writeHead(code,{'Content-Type':type,'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});res.end(body)};
 const server=http.createServer((req,res)=>{
   const u=new URL(req.url,'http://x'),p=u.pathname;
-  if(p==='/api/join'){return same(u.searchParams.get('code')||'',CODE())?send(res,200,JSON.stringify({ok:true,event:cfg().event||''})):send(res,401,'{"error":"código incorrecto"}')}
+  if(p==='/api/join'){return same(u.searchParams.get('code')||'',CODE())?send(res,200,JSON.stringify({ok:true,event:cfg().event||'',bizum:(cfg().bizum||[]).some(n=>String(n).trim().toLowerCase()===String(u.searchParams.get('name')||'').trim().toLowerCase())})):send(res,401,'{"error":"código incorrecto"}')}
   if(p==='/api/config'){const c=cfg();return send(res,200,JSON.stringify({menu:c.menu||null,goal:c.goal||0,event:c.event||''}))}
   if(p==='/api/info')return send(res,200,JSON.stringify({ips:ips(),port:PORT,clients:[...clients].filter(c=>c.role!=='hub').map(c=>({role:c.role,dev:c.dev})),peers:PEERS(),self:ips().map(i=>i+':'+PORT)}));
   if(p==='/api/ping')return send(res,200,'{"ok":true}');

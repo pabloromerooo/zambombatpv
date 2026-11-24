@@ -14,9 +14,10 @@ const H=t=>({apikey:KEY,'Content-Type':'application/json',...(t?{Authorization:'
   const get=async p=>{const x=await fetch(URL_+p,{headers:H(j.access_token)});if(!x.ok)throw new Error(p+' '+x.status);return x.json()};
   const rows=await get('/rest/v1/menu_items?select=category,name,price,sort,station&active=eq.true&order=sort.asc');
   const st=await get('/rest/v1/settings?select=key,value');const S=Object.fromEntries(st.map(x=>[x.key,x.value]));
+  let bizum=[];try{bizum=(await get('/rest/v1/profiles?select=name&bizum=eq.true&active=eq.true')).map(x=>x.name)}catch{}
   const menu=[],idx=new Map();
   rows.forEach(x=>{let c=idx.get(x.category);if(!c){c={name:x.category,items:[]};idx.set(x.category,c);menu.push(c)}c.items.push({n:x.name,p:Number(x.price),k:x.station==='barra'?'b':'c'})});
   fs.mkdirSync(path.join(__dirname,'data'),{recursive:true});
-  fs.writeFileSync(path.join(__dirname,'data','config.json'),JSON.stringify({menu,goal:Number(S.goal)||0,event:S.event_name||'',code:S.access_code||''},null,2));
-  console.log(`✔ Guardado: ${rows.length} productos · objetivo ${S.goal||0} € · código ${S.access_code||'(sin código)'}`);
+  fs.writeFileSync(path.join(__dirname,'data','config.json'),JSON.stringify({menu,goal:Number(S.goal)||0,event:S.event_name||'',code:S.access_code||'',bizum},null,2));
+  console.log(`✔ Guardado: ${rows.length} productos · objetivo ${S.goal||0} € · código ${S.access_code||'(sin código)'} · Bizum: ${bizum.length?bizum.join(', '):'nadie'}`);
 })().catch(e=>{console.log('Error:',e.message);process.exit(1)});
